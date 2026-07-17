@@ -279,7 +279,7 @@ export interface GreedyKingState {
 export const fetchGreedyKingState = async (currency: CurrencyType): Promise<GreedyKingState> => {
   const res = await fetch(`${API_BASE_URL}/greedy-king/state?currency=${currency}`);
   if (!res.ok) throw new Error("Failed to fetch game state");
-  return publishBalancePayload(await res.json());
+  return res.json();
 };
 
 export const placeGreedyKingBet = async (data: {
@@ -298,7 +298,7 @@ export const placeGreedyKingBet = async (data: {
     const err = await res.json();
     throw new Error(err.error || "Failed to place bet");
   }
-  return res.json();
+  return publishBalancePayload(await res.json());
 };
 
 export const fetchMyGreedyKingBets = async (userId: number | string, currency: CurrencyType): Promise<{ myBets: number[]; roundNumber: number }> => {
