@@ -1231,7 +1231,7 @@ const TwistGame = () => {
                   PART CASHOUT 
                   {hasPartProgress && (
                     <span className="cashout-amount blue-glow">
-                      {currency === "dollar" ? `$${partPayoutVal.toFixed(2)}` : `★${partPayoutVal}`}
+                      {currencyMode === "STAR" ? `★${partPayoutVal}` : `${currencySymbol(currencyMode)}${partPayoutVal.toFixed(2)}`}
                     </span>
                   )}
                 </button>
