@@ -34,6 +34,9 @@ const OfferPopup = () => {
   } | null>(null);
 
   useEffect(() => {
+    // Show the promo popup only once per session, and only immediately after splash
+    // so it never overlays the Wallet / game screens the user navigates into.
+    if (sessionStorage.getItem("offer_popup_shown") === "1") return;
     let cancelled = false;
     (async () => {
       try {
@@ -42,8 +45,11 @@ const OfferPopup = () => {
         const first = (d.offers || [])[0];
         if (!cancelled && first) {
           setOffer(first);
-          // Small delay so it doesn't clash with splash
-          setTimeout(() => !cancelled && setOpen(true), 600);
+          setTimeout(() => {
+            if (cancelled) return;
+            sessionStorage.setItem("offer_popup_shown", "1");
+            setOpen(true);
+          }, 400);
         }
       } catch { /* ignore */ }
     })();
