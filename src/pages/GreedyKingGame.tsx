@@ -443,12 +443,14 @@ const GreedyKingGame = () => {
                   transform: isActive ? "scale(1.05)" : "scale(1)",
                 }}
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold"
                   style={{
                     background: isActive ? "hsl(50, 90%, 55%)" : "hsla(50, 70%, 60%, 0.6)",
                     color: isActive ? "hsl(0, 60%, 30%)" : "hsl(210, 40%, 20%)",
                   }}>
-                  {bet >= 1000 ? `${bet / 1000}K` : bet}
+                  {currencyMode === "STAR"
+                    ? `${bet >= 1000 ? `${bet / 1000}K` : bet}⭐`
+                    : `${bet >= 1000 ? `${bet / 1000}K` : bet}${currencyMode === "INR" ? "₹" : "$"}`}
                 </div>
               </button>
             );
