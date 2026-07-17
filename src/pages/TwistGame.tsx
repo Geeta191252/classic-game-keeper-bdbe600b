@@ -1182,8 +1182,9 @@ const TwistGame = () => {
                 <div className="bet-input-section">
                   <div className="bet-input-label">BET</div>
                   <div className="bet-value-display">
-                    <div className="currency-icon">{currency === "dollar" ? "$" : "★"}</div>
+                    <div className="currency-icon">{currencyMode === "STAR" ? "★" : currencySymbol(currencyMode)}</div>
                     <span>{bet}</span>
+
                   </div>
                 </div>
                 <div className="bet-spinners">
