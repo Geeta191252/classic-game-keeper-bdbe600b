@@ -264,6 +264,12 @@ const TwistGame = () => {
   const tgUser = getTelegramUser();
 
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
+  const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
+  useEffect(() => {
+    const newC = currencyMode === "STAR" ? "star" : "dollar";
+    setCurrency(newC);
+    setBet(newC === "star" ? 30 : 3);
+  }, [currencyMode]);
   const [bet, setBet] = useState(3);
   const [lastWin, setLastWin] = useState<number | null>(null);
   
