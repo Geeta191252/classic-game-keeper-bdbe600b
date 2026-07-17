@@ -135,10 +135,12 @@ const DIFFICULTY_CONFIG: Record<
   }
 };
 
-const PRESETS_BY_CURRENCY: Record<CurrencyType, number[]> = {
-  dollar: [0.5, 1, 2, 7],
-  star: [10, 25, 50, 100]
+const PRESETS_BY_MODE: Record<GameCurrencyMode, number[]> = {
+  USD: [0.5, 1, 2, 7],
+  INR: [50, 100, 200, 500],
+  STAR: [10, 25, 50, 100],
 };
+
 
 const ChickenClassicGame = () => {
   const navigate = useNavigate();
