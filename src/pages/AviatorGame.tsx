@@ -537,18 +537,15 @@ const BetPanel = ({
           <button onClick={() => setValue(value + 1)} className="w-7 h-full grid place-items-center text-primary text-base font-bold hover:bg-primary/10">+</button>
         </div>
         <div className="h-9 rounded-md bg-[hsl(265_50%_8%)] border border-primary/40 flex overflow-hidden">
-          <button
-            onClick={() => setCurrency("dollar")}
-            className={`px-2.5 text-[11px] font-black tracking-wide transition ${currency === "dollar" ? "bg-primary/40 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            USD
-          </button>
-          <button
-            onClick={() => setCurrency("star")}
-            className={`px-2.5 grid place-items-center transition border-l border-primary/40 ${currency === "star" ? "bg-primary/40" : ""}`}
-          >
-            <span className="text-yellow-400 text-base leading-none">★</span>
-          </button>
+          {(["USD", "INR", "STAR"] as GameCurrencyMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setCurrencyMode(m)}
+              className={`px-2 text-[11px] font-black tracking-wide transition border-l first:border-l-0 border-primary/40 ${currencyMode === m ? "bg-primary/40 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {m === "USD" ? "$" : m === "INR" ? "₹" : "★"}
+            </button>
+          ))}
         </div>
       </div>
 
