@@ -4,6 +4,8 @@ import { ArrowLeft, ChevronDown, ClipboardList, Menu, MessageCircle, Plus, Troph
 import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { getTelegramUser, type CurrencyType, fetchAviatorState, placeAviatorBet, cashOutAviator, cancelAviatorBet, type AviatorState } from "@/lib/telegram";
+import GameCurrencyChips from "@/components/GameCurrencyChips";
+import { GameCurrencyMode } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 import logoImg from "@/assets/aviator/logo.png";
 import planeImg from "@/assets/aviator/plane.png";
