@@ -1300,8 +1300,8 @@ const AviatorFunGame = () => {
               </button>
               <button className="menu-action-item" onClick={() => {
                 if (confirm("Reset local demo balance to $1,000.00 / ★10,000?")) {
-                  setDemoDollar(1000.0);
-                  setDemoStar(10000);
+                  localStorage.setItem("demo_dollar", "1000");
+                  localStorage.setItem("demo_star", "10000");
                   toast.success("Demo wallet reset!");
                   setIsMenuOpen(false);
                 }

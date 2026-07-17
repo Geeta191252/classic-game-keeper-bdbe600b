@@ -773,7 +773,7 @@ const TwistGame = () => {
   };
 
   // Click handler on canvas to toggle rings
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasClick = (e: React.MouseEvent<HTMLElement>) => {
     synthRef.current.init();
     if (isRoundActive) return;
 

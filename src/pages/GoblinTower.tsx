@@ -439,8 +439,8 @@ const GoblinTower = () => {
   };
 
   const handleReset = () => {
-    setDemoDollar(1000);
-    setDemoStar(10000);
+    localStorage.setItem("demo_dollar", "1000");
+    localStorage.setItem("demo_star", "10000");
     const zeroStats = { bets: 0, won: 0 };
     setStats(zeroStats);
     saveStatsToStorage(zeroStats);

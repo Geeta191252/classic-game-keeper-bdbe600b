@@ -997,7 +997,7 @@ const WalletScreen = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-xs text-white truncate">
-                    {isCancelled ? `Cancelled: ${tx.description || tx.type}` : (tx.game || tx.description || tx.type)}
+                    {isCancelled ? `Cancelled: ${tx.type}` : (tx.game || tx.type)}
                   </h4>
                   <p className="text-[9px] text-slate-400 mt-0.5">{timeDisplay}</p>
                 </div>
