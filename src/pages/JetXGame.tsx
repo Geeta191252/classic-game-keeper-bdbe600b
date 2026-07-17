@@ -32,7 +32,10 @@ const JetXGame = () => {
 
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
-  useEffect(() => { setCurrency(currencyMode === "STAR" ? "star" : "dollar"); }, [currencyMode]);
+  useEffect(() => {
+    setCurrency(currencyMode === "STAR" ? "star" : "dollar");
+    setBetAmount(currencyMode === "INR" ? 85 : currencyMode === "STAR" ? 10 : 1);
+  }, [currencyMode]);
   const [phase, setPhase] = useState<Phase>("betting");
   const [multiplier, setMultiplier] = useState(1);
   const [crashAt, setCrashAt] = useState<number | null>(null);
