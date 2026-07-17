@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowDownLeft, ArrowUpRight, DollarSign, Star, ArrowRightLeft, Wallet, Unplug, Coins, ExternalLink, X, Clock, Smartphone } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, DollarSign, IndianRupee, Star, ArrowRightLeft, Wallet, Unplug, Coins, ExternalLink, X, Clock, Smartphone } from "lucide-react";
 import { useTonConnectUI, useTonWallet, useTonAddress } from "@tonconnect/ui-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { isTelegramMiniApp, initiatePayment, fetchTransactions, fetchWinnings, getTelegram, type CurrencyType, type ActionType } from "@/lib/telegram";
+import { initiatePayment, fetchTransactions, getTelegram, type CurrencyType, type ActionType } from "@/lib/telegram";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import AmountInputDialog from "./AmountInputDialog";
 
@@ -59,8 +59,6 @@ const formatTransactionTime = (value: unknown) => {
   } catch { /* ignore */ }
   return raw;
 };
-
-type CurrencyOption = "dollar" | "star";
 
 const WalletScreen = () => {
   const [loading, setLoading] = useState(false);
@@ -127,10 +125,16 @@ const WalletScreen = () => {
   const [upiUtr, setUpiUtr] = useState("");
   const [upiSubmitting, setUpiSubmitting] = useState(false);
 
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
   const apiBase = import.meta.env.VITE_API_BASE_URL || "https://broken-bria-chetan1-ea890b93.koyeb.app/api";
+
+  const formatCurrencyAmount = (currency: CurrencyType, amount: number) => {
+    if (currency === "star") return `${amount.toLocaleString()} ⭐`;
+    if (currency === "rupee") return `₹${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const safeCopy = (text: string) => {
     try {
@@ -168,8 +172,8 @@ const WalletScreen = () => {
   }, []);
 
   const handleUpiDepositSubmit = async () => {
-    const usd = Number(upiAmount);
-    if (!usd || usd <= 0) {
+    const rupeeAmount = Number(upiAmount);
+    if (!rupeeAmount || rupeeAmount <= 0) {
       toast({ title: "Invalid amount", description: "Please enter a valid amount.", variant: "destructive" });
       return;
     }
@@ -186,7 +190,7 @@ const WalletScreen = () => {
       const res = await fetch(`${apiBase}/upi/deposit-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, amount: usd, utr: utrVal }),
+        body: JSON.stringify({ userId, amount: rupeeAmount, utr: utrVal }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
@@ -245,8 +249,10 @@ const WalletScreen = () => {
   });
 
   const dollarWinnings = dollarWinning;
+  const rupeeWinnings = rupeeWinning;
   const starWinnings = starWinning;
   const totalDollarWallet = dollarBalance + dollarWinnings;
+  const totalRupeeWallet = rupeeBalance + rupeeWinnings;
   const totalStarWallet = starBalance + starWinnings;
 
   useQuery({
@@ -429,7 +435,7 @@ const WalletScreen = () => {
         if (status === "paid") {
           toast({
             title: "Success! ✅",
-            description: `${action === "deposit" ? "Deposit" : "Withdrawal"} of ${currency === "dollar" ? "$" + amount : amount + " ⭐"} completed!`,
+            description: `${action === "deposit" ? "Deposit" : "Withdrawal"} of ${formatCurrencyAmount(currency, amount)} completed!`,
           });
           refreshBalance();
         } else if (status === "cancelled") {
@@ -455,9 +461,9 @@ const WalletScreen = () => {
       toast({ title: "Address required", description: "Enter your crypto wallet address.", variant: "destructive" });
       return;
     }
-    const winField = withdrawCurrency === "dollar" ? dollarWinnings : starWinnings;
+    const winField = withdrawCurrency === "dollar" ? dollarWinnings : withdrawCurrency === "rupee" ? rupeeWinnings : starWinnings;
     if (amt > winField) {
-      toast({ title: "Insufficient winnings", description: `You only have ${withdrawCurrency === "dollar" ? "$" + winField.toFixed(2) : winField + " ⭐"} in winnings.`, variant: "destructive" });
+      toast({ title: "Insufficient winnings", description: `You only have ${formatCurrencyAmount(withdrawCurrency, winField)} in winnings.`, variant: "destructive" });
       return;
     }
 
@@ -548,20 +554,31 @@ const WalletScreen = () => {
       </motion.div>
 
       {/* Balances Card */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-3.5 space-y-1 shadow-md"
+          className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-3 space-y-1 shadow-md"
         >
           <div className="flex items-center gap-1.5 text-[#8e97a4] text-[9px] font-extrabold uppercase tracking-wider">
-            <DollarSign className="h-3.5 w-3.5 text-emerald-400" /> Dollar ($)
+            <DollarSign className="h-3.5 w-3.5 text-emerald-400" /> Dollar
           </div>
-          <p className="font-black text-base text-white">
+          <p className="font-black text-sm text-white">
             ${totalDollarWallet.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <p className="text-[9.5px] text-[#8e97a4]">
-            INR: ₹{(totalDollarWallet * 85).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-3 space-y-1 shadow-md"
+        >
+          <div className="flex items-center gap-1.5 text-[#8e97a4] text-[9px] font-extrabold uppercase tracking-wider">
+            <IndianRupee className="h-3.5 w-3.5 text-emerald-400" /> Rupee
+          </div>
+          <p className="font-black text-sm text-white">
+            ₹{totalRupeeWallet.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
           </p>
         </motion.div>
         
@@ -569,14 +586,14 @@ const WalletScreen = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-3.5 space-y-1 shadow-md"
+          className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-3 space-y-1 shadow-md"
         >
           <div className="flex items-center justify-between gap-1">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-[#8e97a4] text-[9px] font-extrabold uppercase tracking-wider">
                 <Star className="h-3.5 w-3.5 text-amber-400" /> Stars
               </div>
-              <p className="font-black text-base text-white">
+              <p className="font-black text-sm text-white">
                 {totalStarWallet.toLocaleString()}
               </p>
             </div>
@@ -634,10 +651,10 @@ const WalletScreen = () => {
                     <h3 className="font-black text-xs text-white uppercase tracking-wider">UPI Deposit</h3>
                   </div>
                   <span className="text-[9px] font-extrabold bg-[#0d121f] text-emerald-400 px-2 py-0.5 rounded border border-white/[0.01]">
-                    ₹ Rate: 1$ = ₹{upiConfig?.exchangeRate || 85}
+                    Credits ₹ Wallet
                   </span>
                 </div>
-                <p className="text-[10px] text-[#8e97a4]">Pay using any Indian UPI App (PhonePe, GPay, Paytm) instantly</p>
+                <p className="text-[10px] text-[#8e97a4]">Pay using any Indian UPI App (PhonePe, GPay, Paytm) and get ₹ balance</p>
                 
                 <button
                   onClick={() => setUpiDepositDialog(true)}
@@ -1071,21 +1088,21 @@ const WalletScreen = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-[9px] font-extrabold text-[#8e97a4] uppercase tracking-wider">USD Amount to Deposit</p>
+                  <p className="text-[9px] font-extrabold text-[#8e97a4] uppercase tracking-wider">INR Amount to Deposit</p>
                   <div className="relative">
                     <Input
                       type="number"
-                      placeholder="Enter USD amount (e.g. 10)"
+                      placeholder="Enter INR amount (e.g. 100)"
                       value={upiAmount}
                       onChange={e => setUpiAmount(e.target.value)}
                       className="pr-6 rounded-xl bg-[#0d121f] border-white/[0.02] text-white h-9 text-xs font-bold"
                       min="1"
                     />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">$</span>
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">₹</span>
                   </div>
                   {Number(upiAmount) > 0 && (
                     <p className="text-[10px] text-emerald-400 font-bold">
-                      Pay exactly: ₹{(Number(upiAmount) * (upiConfig?.exchangeRate || 85)).toFixed(2)} INR
+                      Pay exactly: ₹{Number(upiAmount).toFixed(2)} INR
                     </p>
                   )}
                 </div>
@@ -1096,7 +1113,7 @@ const WalletScreen = () => {
                     <div className="flex flex-col items-center justify-center space-y-1.5">
                       <div className="bg-white p-2.5 rounded-2xl shadow-inner">
                         <QRCodeSVG
-                          value={`upi://pay?pa=${upiConfig?.upiId || ''}&pn=${encodeURIComponent(upiConfig?.payeeName || '')}&am=${(Number(upiAmount) * (upiConfig?.exchangeRate || 85)).toFixed(2)}&cu=INR`}
+                          value={`upi://pay?pa=${upiConfig?.upiId || ''}&pn=${encodeURIComponent(upiConfig?.payeeName || '')}&am=${Number(upiAmount).toFixed(2)}&cu=INR`}
                           size={150}
                           level="H"
                           includeMargin={false}

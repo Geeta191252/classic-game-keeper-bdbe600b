@@ -8,17 +8,23 @@ interface AmountInputDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (amount: number) => void;
-  currency: "dollar" | "star";
+  currency: "dollar" | "rupee" | "star";
   action: "deposit" | "withdraw";
 }
 
 const DOLLAR_PRESETS = [1, 5, 10, 50];
+const RUPEE_PRESETS = [100, 500, 1000, 5000];
 const STAR_PRESETS = [100, 500, 1000, 5000];
+
+const currencyMeta = {
+  dollar: { symbol: "$", label: "dollars", suffix: false, presets: DOLLAR_PRESETS },
+  rupee: { symbol: "₹", label: "rupees", suffix: false, presets: RUPEE_PRESETS },
+  star: { symbol: "⭐", label: "stars", suffix: true, presets: STAR_PRESETS },
+};
 
 const AmountInputDialog = ({ open, onClose, onConfirm, currency, action }: AmountInputDialogProps) => {
   const [amount, setAmount] = useState("");
-  const presets = currency === "dollar" ? DOLLAR_PRESETS : STAR_PRESETS;
-  const symbol = currency === "dollar" ? "$" : "⭐";
+  const meta = currencyMeta[currency];
 
   const handleConfirm = () => {
     const num = parseFloat(amount);
@@ -47,7 +53,7 @@ const AmountInputDialog = ({ open, onClose, onConfirm, currency, action }: Amoun
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-sm text-white">
-                {action === "deposit" ? "Deposit" : "Withdraw"} {symbol}
+                {action === "deposit" ? "Deposit" : "Withdraw"} {meta.symbol}
               </h3>
               <button
                 onClick={onClose}
@@ -59,7 +65,7 @@ const AmountInputDialog = ({ open, onClose, onConfirm, currency, action }: Amoun
 
             {/* Preset amounts */}
             <div className="grid grid-cols-4 gap-1.5 mb-4">
-              {presets.map((preset) => (
+              {meta.presets.map((preset) => (
                 <button
                   key={preset}
                   onClick={() => setAmount(String(preset))}
@@ -69,7 +75,7 @@ const AmountInputDialog = ({ open, onClose, onConfirm, currency, action }: Amoun
                       : "border-white/[0.04] bg-[#131924] text-slate-400 hover:bg-slate-800"
                   }`}
                 >
-                  {currency === "dollar" ? `$${preset}` : `${preset}⭐`}
+                  {meta.suffix ? `${preset}${meta.symbol}` : `${meta.symbol}${preset}`}
                 </button>
               ))}
             </div>
@@ -81,7 +87,7 @@ const AmountInputDialog = ({ open, onClose, onConfirm, currency, action }: Amoun
               </label>
               <Input
                 type="number"
-                placeholder={`Enter amount in ${currency === "dollar" ? "dollars" : "stars"}`}
+                placeholder={`Enter amount in ${meta.label}`}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="rounded-xl bg-[#131924] border-white/[0.04] text-white text-xs h-9"
@@ -95,7 +101,7 @@ const AmountInputDialog = ({ open, onClose, onConfirm, currency, action }: Amoun
               className="w-full rounded-xl h-10 font-bold text-xs bg-[#3b82f6] hover:bg-blue-600 text-white"
             >
               {action === "deposit" ? "Deposit" : "Withdraw"}{" "}
-              {amount ? (currency === "dollar" ? `$${amount}` : `${amount} ⭐`) : ""}
+              {amount ? (meta.suffix ? `${amount} ${meta.symbol}` : `${meta.symbol}${amount}`) : ""}
             </Button>
           </motion.div>
         </>

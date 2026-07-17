@@ -4,7 +4,7 @@ import { ArrowLeft, BookOpen, Volume2, VolumeX } from "lucide-react";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { type CurrencyType, reportGameResult } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 import "./MinesClassicGame.css";
 
@@ -153,14 +153,15 @@ const PRESETS_BY_MODE: Record<GameCurrencyMode, number[]> = {
 
 const MinesClassicGame = () => {
   const navigate = useNavigate();
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
-  useEffect(() => { setCurrency(currencyMode === "STAR" ? "star" : "dollar"); }, [currencyMode]);
+  useEffect(() => { setCurrency(modeToWallet(currencyMode)); }, [currencyMode]);
 
   const totalDollar = dollarBalance + dollarWinning;
+  const totalRupee = rupeeBalance + rupeeWinning;
   const totalStar = starBalance + starWinning;
-  const balance = currency === "dollar" ? totalDollar : totalStar;
+  const balance = currency === "dollar" ? totalDollar : currency === "rupee" ? totalRupee : totalStar;
 
   // Audio configuration
   const audioRef = useRef(new MinesAudioEngine());
@@ -178,6 +179,7 @@ const MinesClassicGame = () => {
   const [revealedCells, setRevealedCells] = useState<Record<number, CellState>>({});
   const [bombPositions, setBombPositions] = useState<Set<number>>(new Set());
   const [shakingCells, setShakingCells] = useState<Set<number>>(new Set());
+  const pendingCellsRef = useRef<Set<number>>(new Set());
 
   // Multipliers list based on current active bombs
   const multipliersList = useMemo(() => {
@@ -238,8 +240,7 @@ const MinesClassicGame = () => {
     unlockAudio();
     audioRef.current.playClick();
     const maxDisplay = currencyMode === "USD" ? 500 : currencyMode === "INR" ? 50000 : 5000;
-    const displayBal = currencyMode === "INR" ? balance * 85 : balance;
-    setBetInputStr(Math.min(displayBal, maxDisplay).toString());
+    setBetInputStr(Math.min(balance, maxDisplay).toString());
   };
 
 
@@ -324,6 +325,7 @@ const MinesClassicGame = () => {
     setBombPositions(positions);
     setRevealedCells({});
     setShakingCells(new Set());
+    pendingCellsRef.current.clear();
     setPhase("playing");
   };
 
@@ -332,9 +334,11 @@ const MinesClassicGame = () => {
     unlockAudio();
     if (phase !== "playing") return;
     if (revealedCells[cellIdx]) return; // already clicked
+    if (pendingCellsRef.current.has(cellIdx)) return;
 
     // Play initial cell reveal tick
     audioRef.current.playClick();
+    pendingCellsRef.current.add(cellIdx);
     
     // Add shake animation
     setShakingCells(prev => new Set([...prev, cellIdx]));
@@ -345,16 +349,17 @@ const MinesClassicGame = () => {
         next.delete(cellIdx);
         return next;
       });
+      pendingCellsRef.current.delete(cellIdx);
 
       if (isRiggedRef.current) {
         // Force this clicked cell to be a bomb
         const nextPositions = new Set(bombPositions);
         nextPositions.add(cellIdx);
         setBombPositions(nextPositions);
-        handleExplodedCell(cellIdx);
+        handleExplodedCell(cellIdx, nextPositions);
       } else if (bombPositions.has(cellIdx)) {
         // Exploded!
-        handleExplodedCell(cellIdx);
+        handleExplodedCell(cellIdx, bombPositions);
       } else {
         // Safe!
         handleSafeCell(cellIdx);
@@ -363,14 +368,15 @@ const MinesClassicGame = () => {
   };
 
   // Exploded cell sequence
-  const handleExplodedCell = (idx: number) => {
+  const handleExplodedCell = (idx: number, positions: Set<number> = bombPositions) => {
     audioRef.current.playLose();
     setPhase("lost");
+    pendingCellsRef.current.clear();
 
     // Reveal all mines (bomb positions) and safe cells
     const finalReveals: Record<number, CellState> = {};
     for (let i = 0; i < 25; i++) {
-      if (bombPositions.has(i)) {
+      if (positions.has(i)) {
         finalReveals[i] = "mine";
       } else {
         finalReveals[i] = "safe";
@@ -383,6 +389,7 @@ const MinesClassicGame = () => {
       setPhase("betting");
       setRevealedCells({});
       setBombPositions(new Set());
+      pendingCellsRef.current.clear();
       refreshBalance();
     }, 2200);
   };
@@ -420,6 +427,7 @@ const MinesClassicGame = () => {
   // Cashout sequence success
   const handleWinCashout = async (multStr: string, winAmt: number) => {
     setPhase("cashed");
+    pendingCellsRef.current.clear();
     audioRef.current.playWin();
 
     try {
@@ -457,6 +465,7 @@ const MinesClassicGame = () => {
     setPhase("betting");
     setRevealedCells({});
     setBombPositions(new Set());
+    pendingCellsRef.current.clear();
     refreshBalance();
   };
 
@@ -546,8 +555,8 @@ const MinesClassicGame = () => {
           <input 
             type="number"
             className="bet-input"
-            step={currency === "dollar" ? "0.10" : "10"}
-            min={currency === "dollar" ? "0.10" : "10"}
+            step={currencyMode === "USD" ? "0.10" : "10"}
+            min={currencyMode === "USD" ? "0.10" : "10"}
             value={betInputStr}
             onChange={(e) => setBetInputStr(e.target.value)}
             disabled={phase !== "betting"}

@@ -28,7 +28,7 @@ const gameBetSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
-      enum: ["dollar", "star"],
+      enum: ["dollar", "rupee", "star"],
       required: true,
     },
   },

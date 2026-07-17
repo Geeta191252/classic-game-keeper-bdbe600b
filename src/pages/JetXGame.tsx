@@ -13,28 +13,27 @@ import {
   type JetXState,
 } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, toNativeAmount, toDisplayAmount, currencySymbol, INR_RATE } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, toDisplayAmount, currencySymbol } from "@/lib/gameCurrency";
 import gameJetx from "@/assets/game-jetx.jpg";
 
 type Phase = "betting" | "flying" | "crashed";
 
 const PRESETS: Record<CurrencyType, number[]> = {
   dollar: [1, 5, 10, 25, 50, 100],
+  rupee: [10, 50, 100, 500, 1000, 2500],
   star: [10, 25, 50, 100, 250, 500],
 };
 
-const fmt = (v: number, c: CurrencyType) => (c === "star" ? `⭐${v.toFixed(2)}` : `$${v.toFixed(2)}`);
-
 const JetXGame = () => {
   const navigate = useNavigate();
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const tgUser = getTelegramUser();
 
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
   useEffect(() => {
-    setCurrency(currencyMode === "STAR" ? "star" : "dollar");
-    setBetAmount(currencyMode === "INR" ? 85 : currencyMode === "STAR" ? 10 : 1);
+    setCurrency(modeToWallet(currencyMode));
+    setBetAmount(currencyMode === "INR" ? 10 : currencyMode === "STAR" ? 10 : 1);
   }, [currencyMode]);
   const [phase, setPhase] = useState<Phase>("betting");
   const [multiplier, setMultiplier] = useState(1);
@@ -52,7 +51,7 @@ const JetXGame = () => {
   const lastPhaseRef = useRef<Phase>("betting");
   const lastRoundRef = useRef(0);
 
-  const totalBal = currency === "dollar" ? dollarBalance + dollarWinning : starBalance + starWinning;
+  const totalBal = currency === "dollar" ? dollarBalance + dollarWinning : currency === "rupee" ? rupeeBalance + rupeeWinning : starBalance + starWinning;
   const displayBalance = toDisplayAmount(totalBal, currencyMode);
   const modeSymbol = currencySymbol(currencyMode);
   const fmtMode = (v: number) => `${modeSymbol}${v.toFixed(2)}`;
@@ -249,7 +248,7 @@ const JetXGame = () => {
               className="p-3 rounded-lg bg-white/5 active:scale-90"><Plus className="h-4 w-4" /></button>
           </div>
           <div className="grid grid-cols-6 gap-1.5 mt-3">
-            {(currencyMode === "INR" ? PRESETS.dollar.map(p => p * INR_RATE) : PRESETS[currency]).map((p) => (
+            {PRESETS[currency].map((p) => (
               <button
                 key={p}
                 onClick={() => setBetAmount(p)}

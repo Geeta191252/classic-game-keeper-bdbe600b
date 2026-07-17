@@ -51,7 +51,7 @@ export const getTelegramUser = () => {
 // Backend API base URL - change this to your Koyeb deployment URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api`;
 
-export type CurrencyType = "dollar" | "star";
+export type CurrencyType = "dollar" | "rupee" | "star";
 export type ActionType = "deposit" | "withdraw";
 
 interface InvoiceResponse {
@@ -127,7 +127,7 @@ export const initiatePayment = async (
 /**
  * Fetch user balance from backend
  */
-export const fetchBalance = async (): Promise<{ dollarBalance: number; starBalance: number; dollarWinning: number; starWinning: number; referralCount: number }> => {
+export const fetchBalance = async (): Promise<{ dollarBalance: number; rupeeBalance: number; starBalance: number; dollarWinning: number; rupeeWinning: number; starWinning: number; referralCount: number }> => {
   const tg = getTelegram();
   const userId = tg?.initDataUnsafe?.user?.id;
 
@@ -200,7 +200,7 @@ export const reportGameResult = async (data: {
   winAmount: number;
   currency: CurrencyType;
   game: string;
-}): Promise<{ dollarBalance: number; starBalance: number }> => {
+}): Promise<{ dollarBalance: number; rupeeBalance: number; starBalance: number; dollarWinning: number; rupeeWinning: number; starWinning: number }> => {
   const tg = getTelegram();
   const userId = tg?.initDataUnsafe?.user?.id;
 

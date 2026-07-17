@@ -22,7 +22,7 @@ import {
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { reportGameResult, getTelegram } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, INR_RATE, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
+import { GameCurrencyMode, WalletKind, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 import { toast } from "@/hooks/use-toast";
 
 type TelegramWebApp = {
@@ -46,11 +46,11 @@ type RigStats = {
   winStreak: number;
 };
 const DEFAULT_RIG: RigStats = { totalBet: 0, totalWin: 0, games: 0, lossStreak: 0, winStreak: 0 };
-const rigKey = (currency: "dollar" | "star") => {
+const rigKey = (currency: WalletKind) => {
   const uid = getTelegram()?.initDataUnsafe?.user?.id ?? "demo";
   return `chickenroad_rig_${uid}_${currency}`;
 };
-const readRig = (currency: "dollar" | "star"): RigStats => {
+const readRig = (currency: WalletKind): RigStats => {
   try {
     const raw = localStorage.getItem(rigKey(currency));
     if (raw) return { ...DEFAULT_RIG, ...JSON.parse(raw) };
@@ -59,7 +59,7 @@ const readRig = (currency: "dollar" | "star"): RigStats => {
   }
   return { ...DEFAULT_RIG };
 };
-const writeRig = (currency: "dollar" | "star", s: RigStats) => {
+const writeRig = (currency: WalletKind, s: RigStats) => {
   try { localStorage.setItem(rigKey(currency), JSON.stringify(s)); } catch { return; }
 };
 const floorMoney = (value: number) => Math.floor(value * 100) / 100;
@@ -140,16 +140,17 @@ const ChickenRoadGame = () => {
     }
   }, []);
 
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } =
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } =
     useBalanceContext();
   const [localDollarAdj, setLocalDollarAdj] = useState(0);
+  const [localRupeeAdj, setLocalRupeeAdj] = useState(0);
   const [localStarAdj, setLocalStarAdj] = useState(0);
   const gameDollarBalance = dollarBalance + dollarWinning + localDollarAdj;
+  const gameRupeeBalance = rupeeBalance + rupeeWinning + localRupeeAdj;
   const gameStarBalance = starBalance + starWinning + localStarAdj;
 
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
   const activeWallet = modeToWallet(currencyMode);
-  const setActiveWallet = (w: "dollar" | "star") => setCurrencyMode(w === "star" ? "STAR" : "USD");
   const [selectedBet, setSelectedBet] = useState(1);
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [phase, setPhase] = useState<Phase>("betting");
@@ -166,8 +167,8 @@ const ChickenRoadGame = () => {
   }, [soundOn]);
 
   const cfg = DIFFICULTY_CONFIG[difficulty];
-  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
-  const currentBalance = currencyMode === "INR" ? nativeBalance * INR_RATE : nativeBalance;
+  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : activeWallet === "rupee" ? gameRupeeBalance : gameStarBalance;
+  const currentBalance = nativeBalance;
   const nBet = (v: number) => toNativeAmount(v, currencyMode);
   const currentMultiplier = currentLane > 0 ? cfg.multipliers[currentLane - 1] : 0;
   const nextMultiplier =
@@ -185,6 +186,7 @@ const ChickenRoadGame = () => {
       return;
     }
     if (activeWallet === "dollar") setLocalDollarAdj((p) => p - nBet(selectedBet));
+    else if (activeWallet === "rupee") setLocalRupeeAdj((p) => p - nBet(selectedBet));
     else setLocalStarAdj((p) => p - nBet(selectedBet));
     if (soundRef.current) playBetSound();
 
@@ -218,6 +220,7 @@ const ChickenRoadGame = () => {
     })
       .then(() => {
         setLocalDollarAdj(0);
+        setLocalRupeeAdj(0);
         setLocalStarAdj(0);
         refreshBalance();
       })
@@ -242,6 +245,7 @@ const ChickenRoadGame = () => {
     })
       .then(() => {
         setLocalDollarAdj(0);
+        setLocalRupeeAdj(0);
         setLocalStarAdj(0);
         refreshBalance();
       })
@@ -328,7 +332,7 @@ const ChickenRoadGame = () => {
   }, [phase]);
 
   const fmt = (n: number) =>
-    activeWallet === "dollar" ? `${n.toFixed(2)} $` : `${n.toFixed(2)} ⭐`;
+    activeWallet === "star" ? `${n.toFixed(2)} ⭐` : `${currencySymbol(currencyMode)}${n.toFixed(2)}`;
   const potentialWin = currentLane > 0 ? selectedBet * currentMultiplier : selectedBet * nextMultiplier;
 
   // Smooth scrolling track: render ALL lanes, translate horizontally as chicken advances.

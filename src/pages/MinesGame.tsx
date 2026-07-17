@@ -6,7 +6,7 @@ import { playBetSound, playWinSound, playLoseSound, playResultReveal, startBgMus
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { reportGameResult } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, INR_RATE, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 
 const GRID_SIZE = 5;
 const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
@@ -58,10 +58,12 @@ const MinesGame = () => {
   const soundRef = useRef(true);
   useEffect(() => { soundRef.current = soundOn; }, [soundOn]);
 
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const [localDollarAdj, setLocalDollarAdj] = useState(0);
+  const [localRupeeAdj, setLocalRupeeAdj] = useState(0);
   const [localStarAdj, setLocalStarAdj] = useState(0);
   const gameDollarBalance = dollarBalance + dollarWinning + localDollarAdj;
+  const gameRupeeBalance = rupeeBalance + rupeeWinning + localRupeeAdj;
   const gameStarBalance = starBalance + starWinning + localStarAdj;
 
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
@@ -83,13 +85,14 @@ const MinesGame = () => {
     return () => { stopBgMusic(); };
   }, [soundOn]);
 
-  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
-  const currentBalance = currencyMode === "INR" ? nativeBalance * INR_RATE : nativeBalance;
+  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : activeWallet === "rupee" ? gameRupeeBalance : gameStarBalance;
+  const currentBalance = nativeBalance;
   const nativeBetFor = (v: number) => toNativeAmount(v, currencyMode);
 
   // Track remaining mines to place and revealed safe cells for lazy mine placement
   const remainingMinesRef = useRef(0);
   const revealedSafeRef = useRef<Set<number>>(new Set());
+  const revealingRef = useRef(false);
 
   const startGame = useCallback(() => {
     if (currentBalance < selectedBet) return;
@@ -97,6 +100,7 @@ const MinesGame = () => {
     // Deduct bet in native wallet units
     const nBet = nativeBetFor(selectedBet);
     if (activeWallet === "dollar") setLocalDollarAdj(p => p - nBet);
+    else if (activeWallet === "rupee") setLocalRupeeAdj(p => p - nBet);
     else setLocalStarAdj(p => p - nBet);
     if (soundRef.current) playBetSound();
 
@@ -112,7 +116,9 @@ const MinesGame = () => {
   }, [currentBalance, selectedBet, activeWallet, mineCount]);
 
   const revealCell = useCallback((index: number) => {
-    if (phase !== "playing" || grid[index] !== "hidden") return;
+    if (phase !== "playing" || grid[index] !== "hidden" || revealingRef.current) return;
+    revealingRef.current = true;
+    window.setTimeout(() => { revealingRef.current = false; }, 150);
 
     const newGrid = [...grid];
     const remainingMines = remainingMinesRef.current;
@@ -169,7 +175,7 @@ const MinesGame = () => {
       if (soundRef.current) playLoseSound();
       setRound(r => r + 1);
       reportGameResult({ betAmount: nativeBetFor(selectedBet), winAmount: 0, currency: activeWallet, game: "mines" })
-        .then(() => { setLocalDollarAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
+        .then(() => { setLocalDollarAdj(0); setLocalRupeeAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
     } else {
       // Safe pick
       newGrid[index] = "safe";
@@ -189,7 +195,7 @@ const MinesGame = () => {
         if (soundRef.current) playWinSound();
         setRound(r => r + 1);
         reportGameResult({ betAmount: nativeBetFor(selectedBet), winAmount: nativeBetFor(prize), currency: activeWallet, game: "mines" })
-          .then(() => { setLocalDollarAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
+          .then(() => { setLocalDollarAdj(0); setLocalRupeeAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
       }
     }
   }, [phase, grid, minePositions, safePicks, mineCount, selectedBet, activeWallet, refreshBalance]);
@@ -211,7 +217,7 @@ const MinesGame = () => {
     setRound(r => r + 1);
     // Report cashout win to backend
     reportGameResult({ betAmount: nativeBetFor(selectedBet), winAmount: nativeBetFor(prize), currency: activeWallet, game: "mines" })
-      .then(() => { setLocalDollarAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
+      .then(() => { setLocalDollarAdj(0); setLocalRupeeAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
   }, [phase, safePicks, selectedBet, currentMultiplier, activeWallet, grid, minePositions, refreshBalance]);
 
   const nextMultiplier = phase === "playing" ? getMultiplier(safePicks + 1, mineCount) : 1;

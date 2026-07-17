@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { getTelegramUser, type CurrencyType, reportGameResult } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, toNativeAmount, currencySymbol, INR_RATE } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 import "./TwistGame.css";
 
@@ -262,15 +262,15 @@ const stepAngles = MULTIPLIERS.map(arr => {
 
 const TwistGame = () => {
   const navigate = useNavigate();
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
   const tgUser = getTelegramUser();
 
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
   useEffect(() => {
-    const newC = currencyMode === "STAR" ? "star" : "dollar";
+    const newC = modeToWallet(currencyMode);
     setCurrency(newC);
-    setBet(currencyMode === "INR" ? 3 * INR_RATE : newC === "star" ? 30 : 3);
+    setBet(currencyMode === "INR" ? 100 : newC === "star" ? 30 : 3);
   }, [currencyMode]);
   const [bet, setBet] = useState(3);
   const [lastWin, setLastWin] = useState<number | null>(null);
@@ -317,8 +317,9 @@ const TwistGame = () => {
   });
 
   const totalDollar = dollarBalance + dollarWinning;
+  const totalRupee = rupeeBalance + rupeeWinning;
   const totalStar = starBalance + starWinning;
-  const balance = currency === "dollar" ? totalDollar : totalStar;
+  const balance = currency === "dollar" ? totalDollar : currency === "rupee" ? totalRupee : totalStar;
   const userName = tgUser?.first_name || tgUser?.username || "Player";
 
   // Pre-load images
@@ -779,7 +780,7 @@ const TwistGame = () => {
     synthRef.current.init();
     synthRef.current.playClick();
     if (isRoundActive) return;
-    setBet(prev => Math.max(1, Math.min(currency === "dollar" ? 100 : 1000, prev + amt)));
+    setBet(prev => Math.max(1, Math.min(currencyMode === "USD" ? 100 : currencyMode === "INR" ? 10000 : 1000, prev + amt)));
   };
 
   // Click handler on canvas to toggle rings
@@ -1111,9 +1112,9 @@ const TwistGame = () => {
     const roundId = "#" + Math.floor(Math.random() * 900000 + 100000);
     const record = {
       id: roundId,
-      bet: currency === "star" ? `★${bet}` : `$${bet.toFixed(2)}`,
+      bet: currencyMode === "STAR" ? `★${bet}` : `${currencySymbol(currencyMode)}${bet.toFixed(2)}`,
       mult,
-      payout: payout > 0 ? (currency === "star" ? `★${payout}` : `$${payout.toFixed(2)}`) : "0.00",
+      payout: payout > 0 ? (currencyMode === "STAR" ? `★${payout}` : `${currencySymbol(currencyMode)}${payout.toFixed(2)}`) : "0.00",
       type
     };
     setBetHistory(prev => [record, ...prev].slice(0, 20));
@@ -1188,10 +1189,10 @@ const TwistGame = () => {
                   </div>
                 </div>
                 <div className="bet-spinners">
-                  <button className="spinner-btn" onClick={() => adjustBetVal(currency === "dollar" ? 1 : 10)}>
+                  <button className="spinner-btn" onClick={() => adjustBetVal(currencyMode === "USD" ? 1 : currencyMode === "INR" ? 100 : 10)}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
                   </button>
-                  <button className="spinner-btn" onClick={() => adjustBetVal(currency === "dollar" ? -1 : -10)}>
+                  <button className="spinner-btn" onClick={() => adjustBetVal(currencyMode === "USD" ? -1 : currencyMode === "INR" ? -100 : -10)}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
                   </button>
                 </div>

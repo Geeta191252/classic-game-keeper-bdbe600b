@@ -14,7 +14,7 @@ const transactionSchema = new mongoose.Schema(
     },
     currency: {
       type: String,
-      enum: ["dollar", "star", "ton"],
+      enum: ["dollar", "rupee", "star", "ton"],
       required: true,
     },
     amount: {

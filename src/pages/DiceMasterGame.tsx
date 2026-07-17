@@ -6,7 +6,7 @@ import { playBetSound, playSpinSound, playWinSound, playLoseSound, playCountdown
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { reportGameResult, type CurrencyType } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, INR_RATE, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 
 const DICE_FACES = [
   { value: 1, dots: "⚀", multiplier: 0 },
@@ -26,10 +26,12 @@ const DiceMasterGame = () => {
   const [soundOn, setSoundOn] = useState(true);
   const soundRef = useRef(true);
   useEffect(() => { soundRef.current = soundOn; }, [soundOn]);
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const [localDollarAdj, setLocalDollarAdj] = useState(0);
+  const [localRupeeAdj, setLocalRupeeAdj] = useState(0);
   const [localStarAdj, setLocalStarAdj] = useState(0);
   const gameDollarBalance = dollarBalance + dollarWinning + localDollarAdj;
+  const gameRupeeBalance = rupeeBalance + rupeeWinning + localRupeeAdj;
   const gameStarBalance = starBalance + starWinning + localStarAdj;
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
   const activeWallet = modeToWallet(currencyMode);
@@ -60,10 +62,8 @@ const DiceMasterGame = () => {
     };
   }, []);
 
-  // INR is a display layer over the dollar wallet, so balance/bet compare
-  // in display units (INR shows $ balance × 85).
-  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
-  const currentBalance = currencyMode === "INR" ? nativeBalance * INR_RATE : nativeBalance;
+  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : activeWallet === "rupee" ? gameRupeeBalance : gameStarBalance;
+  const currentBalance = nativeBalance;
 
   const rollDice = () => {
     if (phase !== "betting" || currentBalance < selectedBet) return;
@@ -71,6 +71,7 @@ const DiceMasterGame = () => {
     // Bet in native wallet units (INR display → $ backend)
     const nativeBet = toNativeAmount(selectedBet, currencyMode);
     if (activeWallet === "dollar") setLocalDollarAdj(p => p - nativeBet);
+    else if (activeWallet === "rupee") setLocalRupeeAdj(p => p - nativeBet);
     else setLocalStarAdj(p => p - nativeBet);
 
     if (soundRef.current) playBetSound();
@@ -125,7 +126,7 @@ const DiceMasterGame = () => {
       }
       // Report result to backend in NATIVE wallet units
       reportGameResult({ betAmount: toNativeAmount(selectedBet, currencyMode), winAmount: toNativeAmount(prize, currencyMode), currency: activeWallet, game: "dice-master" })
-        .then(() => { setLocalDollarAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
+        .then(() => { setLocalDollarAdj(0); setLocalRupeeAdj(0); setLocalStarAdj(0); refreshBalance(); }).catch(console.error);
 
       setPhase("result");
       setResultTimer(3);

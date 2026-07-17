@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { type CurrencyType, reportGameResult } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, toNativeAmount, currencySymbol, INR_RATE } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 import "./GoblinTower.css";
 
@@ -16,9 +16,10 @@ const MULTIPLIERS = {
   high: [4.80, 23.04, 110.59, 530.84, 2548.04, 12230.59, 58706.84, 281792.84, 1352605.65, 6492507.13, 31164034.21]
 };
 
-const PRESETS_BY_CURRENCY = {
-  dollar: [1, 3, 5, 10, 20, 50, 100],
-  star: [10, 25, 50, 100, 250, 500, 1000]
+const PRESETS_BY_CURRENCY: Record<GameCurrencyMode, number[]> = {
+  USD: [1, 3, 5, 10, 20, 50, 100],
+  INR: [100, 300, 500, 1000, 2000, 5000, 10000],
+  STAR: [10, 25, 50, 100, 250, 500, 1000]
 };
 
 // Web Audio API Sound Engine
@@ -159,13 +160,13 @@ type CrateStateType = null | "safe" | "goblin" | "unrevealed-safe" | "unrevealed
 
 const GoblinTower = () => {
   const navigate = useNavigate();
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
   useEffect(() => {
-    const newC = currencyMode === "STAR" ? "star" : "dollar";
+    const newC = modeToWallet(currencyMode);
     setCurrency(newC);
-    setBet(currencyMode === "INR" ? 3 * INR_RATE : newC === "star" ? 30 : 3);
+    setBet(currencyMode === "INR" ? 100 : newC === "star" ? 30 : 3);
   }, [currencyMode]);
 
   // States
@@ -203,8 +204,9 @@ const GoblinTower = () => {
   const audioRef = useRef<GoblinAudioEngine>(new GoblinAudioEngine());
 
   const totalDollar = dollarBalance + dollarWinning;
+  const totalRupee = rupeeBalance + rupeeWinning;
   const totalStar = starBalance + starWinning;
-  const balance = currency === "dollar" ? totalDollar : totalStar;
+  const balance = currency === "dollar" ? totalDollar : currency === "rupee" ? totalRupee : totalStar;
 
   // Set initial settings from localStorage if available
   useEffect(() => {
@@ -440,7 +442,7 @@ const GoblinTower = () => {
 
   const adjustBet = (amt: number) => {
     if (isPlaying) return;
-    setBet(prev => Math.max(1, Math.min(currency === "dollar" ? 1000 : 10000, prev + amt)));
+    setBet(prev => Math.max(1, Math.min(currencyMode === "USD" ? 1000 : currencyMode === "INR" ? 100000 : 10000, prev + amt)));
   };
 
   const handleDifficultySelect = (diff: DifficultyType) => {
@@ -578,11 +580,11 @@ const GoblinTower = () => {
               {/* Betting Controls Panel */}
               <div className="controls-panel">
                 <div className="bet-input-row-screenshot">
-                  <button className="bet-adjust-btn-screenshot" onClick={() => adjustBet(currency === "dollar" ? -1 : -10)} disabled={isPlaying}>Min</button>
+                  <button className="bet-adjust-btn-screenshot" onClick={() => adjustBet(currencyMode === "USD" ? -1 : currencyMode === "INR" ? -100 : -10)} disabled={isPlaying}>Min</button>
                   <div className="bet-value-display">
                     <span className="bet-number-input-screenshot">{currencyMode === "STAR" ? `${bet} ⭐` : `${currencySymbol(currencyMode)}${bet.toFixed(2)}`}</span>
                   </div>
-                  <button className="bet-adjust-btn-screenshot" onClick={() => adjustBet(currency === "dollar" ? 1 : 10)} disabled={isPlaying}>Max</button>
+                  <button className="bet-adjust-btn-screenshot" onClick={() => adjustBet(currencyMode === "USD" ? 1 : currencyMode === "INR" ? 100 : 10)} disabled={isPlaying}>Max</button>
                 </div>
 
                 {/* Bet / Cashout Main Action Button */}

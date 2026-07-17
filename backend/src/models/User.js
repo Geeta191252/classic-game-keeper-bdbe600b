@@ -13,12 +13,22 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    rupeeBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     starBalance: {
       type: Number,
       default: 0,
       min: 0,
     },
     dollarWinning: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    rupeeWinning: {
       type: Number,
       default: 0,
       min: 0,

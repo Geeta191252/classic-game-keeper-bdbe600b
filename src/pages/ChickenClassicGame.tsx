@@ -4,7 +4,7 @@ import { ArrowLeft, BookOpen, Volume2, VolumeX } from "lucide-react";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { type CurrencyType, reportGameResult } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 import "./ChickenClassicGame.css";
 
@@ -144,17 +144,18 @@ const PRESETS_BY_MODE: Record<GameCurrencyMode, number[]> = {
 
 const ChickenClassicGame = () => {
   const navigate = useNavigate();
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
 
   // Wallet currency selector
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
-  useEffect(() => { setCurrency(currencyMode === "STAR" ? "star" : "dollar"); }, [currencyMode]);
+  useEffect(() => { setCurrency(modeToWallet(currencyMode)); }, [currencyMode]);
 
   // Real balance — always from context (no fake demo balance)
   const totalDollar = dollarBalance + dollarWinning;
+  const totalRupee = rupeeBalance + rupeeWinning;
   const totalStar = starBalance + starWinning;
-  const balance = currency === "dollar" ? totalDollar : totalStar;
+  const balance = currency === "dollar" ? totalDollar : currency === "rupee" ? totalRupee : totalStar;
 
 
   // Audio Engine
@@ -201,13 +202,13 @@ const ChickenClassicGame = () => {
   const handleMinBet = () => {
     unlockAudio();
     audioRef.current.playClick();
-    setBetAmount(currency === "dollar" ? 0.1 : 1);
+    setBetAmount(currencyMode === "USD" ? 0.1 : currencyMode === "INR" ? 10 : 1);
   };
 
   const handleMaxBet = () => {
     unlockAudio();
     audioRef.current.playClick();
-    const maxVal = currency === "dollar" ? 500 : 5000;
+    const maxVal = currencyMode === "USD" ? 500 : currencyMode === "INR" ? 50000 : 5000;
     setBetAmount(Math.min(balance, maxVal));
   };
 
@@ -269,15 +270,15 @@ const ChickenClassicGame = () => {
       isRiggedRef.current = false;
     }
 
-    const minBet = currency === "dollar" ? 0.1 : 1;
-    const maxBet = currency === "dollar" ? 1000 : 10000;
+    const minBet = currencyMode === "USD" ? 0.1 : currencyMode === "INR" ? 10 : 1;
+    const maxBet = currencyMode === "USD" ? 1000 : currencyMode === "INR" ? 100000 : 10000;
 
     if (betAmount < minBet) {
-      toast.error(`Minimum bet amount is ${currency === "dollar" ? "$0.1" : "1 Star"}`);
+      toast.error(`Minimum bet amount is ${currencySymbol(currencyMode)}${minBet}`);
       return;
     }
     if (betAmount > maxBet) {
-      toast.error(`Maximum bet amount is ${currency === "dollar" ? "$1,000" : "10,000 Stars"}`);
+      toast.error(`Maximum bet amount is ${currencySymbol(currencyMode)}${maxBet}`);
       return;
     }
     const nativeBet = toNativeAmount(betAmount, currencyMode);
@@ -537,10 +538,10 @@ const ChickenClassicGame = () => {
           <input 
             className="minmax-input" 
             type="number" 
-            step={currency === "dollar" ? "0.1" : "1"} 
-            min={currency === "dollar" ? "0.1" : "1"} 
+            step={currencyMode === "USD" ? "0.1" : "1"} 
+            min={currencyMode === "USD" ? "0.1" : "1"} 
             value={betAmount} 
-            onChange={(e) => setBetAmount(Math.max(currency === "dollar" ? 0.1 : 1, parseFloat(e.target.value) || 0))}
+            onChange={(e) => setBetAmount(Math.max(currencyMode === "USD" ? 0.1 : 1, parseFloat(e.target.value) || 0))}
             disabled={phase !== "betting"} 
           />
           <button className="minmax-btn" onClick={handleMaxBet} disabled={phase !== "betting"}>MAX</button>

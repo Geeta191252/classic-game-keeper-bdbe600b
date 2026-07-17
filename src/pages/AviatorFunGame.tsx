@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { type CurrencyType, reportGameResult, fetchAviatorState, getTelegramUser } from "@/lib/telegram";
+import { GameCurrencyMode, currencySymbol, modeToWallet } from "@/lib/gameCurrency";
 
 type ServerBet = { user: string; amount: number; multiplier: number | null; cashout: number | null };
 
@@ -244,18 +245,16 @@ const INITIAL_HISTORY = [
   20.67, 5.90, 66.12, 5.13, 1.25, 2.80, 1.10, 8.44, 1.95, 12.30
 ];
 
-const INR_RATE = 85; // 1 USD = 85 INR
-
 const AviatorFunGame = () => {
   const navigate = useNavigate();
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance, currencyDisplay, toggleCurrencyDisplay } = useBalanceContext();
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
-  const [displayMode, setDisplayMode] = useState<"USD" | "INR" | "STAR">("USD");
+  const [displayMode, setDisplayMode] = useState<GameCurrencyMode>("USD");
 
   const totalDollar = dollarBalance + dollarWinning;
+  const totalRupee = rupeeBalance + rupeeWinning;
   const totalStar = starBalance + starWinning;
-  // Balance in the DISPLAY unit (INR = dollars * 85, USD = dollars, STAR = stars)
-  const balance = displayMode === "STAR" ? totalStar : displayMode === "INR" ? totalDollar * INR_RATE : totalDollar;
+  const balance = displayMode === "STAR" ? totalStar : displayMode === "INR" ? totalRupee : totalDollar;
 
   // Settings
   const [roundSpeedMultiplier, setRoundSpeedMultiplier] = useState(1.0);
@@ -771,10 +770,10 @@ const AviatorFunGame = () => {
     };
   }, [startWaitingRound]);
 
-  // Convert a display-unit amount to the backend currency unit
+  // INR is its own native wallet now, so display amount equals backend amount.
   const toBackendAmount = useCallback((displayVal: number) => {
-    return displayMode === "INR" ? displayVal / INR_RATE : displayVal;
-  }, [displayMode]);
+    return displayVal;
+  }, []);
 
   // Place Bet
   const placeBetUser = async (panelId: "panel-1" | "panel-2") => {
@@ -965,14 +964,14 @@ const AviatorFunGame = () => {
             )}
             <span className="player-name" style={player.isUser ? { fontWeight: 700 } : {}}>{player.name}</span>
           </div>
-          <div className="bet-val text-center">{currency === "star" ? `★${Math.floor(player.betAmount)}` : `$${player.betAmount}`}</div>
+          <div className="bet-val text-center">{displayMode === "STAR" ? `★${Math.floor(player.betAmount)}` : `${currencySymbol(displayMode)}${player.betAmount}`}</div>
           <div className="bet-mult text-center">
             {isCashed && mult > 0 ? (
               <span className={`multiplier-badge ${getBadgeClass(mult)}`}>{mult.toFixed(2)}x</span>
             ) : "-"}
           </div>
           <div className="win-val text-right">
-            {isCashed ? (currency === "star" ? `★${Math.floor(player.winAmount)}` : `$${player.winAmount.toFixed(2)}`) : "-"}
+            {isCashed ? (displayMode === "STAR" ? `★${Math.floor(player.winAmount)}` : `${currencySymbol(displayMode)}${player.winAmount.toFixed(2)}`) : "-"}
           </div>
         </div>
       );
@@ -1002,7 +1001,7 @@ const AviatorFunGame = () => {
                 onClick={() => {
                   if (gameState !== "FLYING") {
                     setDisplayMode("USD");
-                    setCurrency("dollar");
+                    setCurrency(modeToWallet("USD"));
                     setPanel1(prev => ({ ...prev, amount: 3 }));
                     setPanel2(prev => ({ ...prev, amount: 3 }));
                   }
@@ -1018,13 +1017,13 @@ const AviatorFunGame = () => {
                 onClick={() => {
                   if (gameState !== "FLYING") {
                     setDisplayMode("INR");
-                    setCurrency("dollar");
+                    setCurrency(modeToWallet("INR"));
                     setPanel1(prev => ({ ...prev, amount: 100 }));
                     setPanel2(prev => ({ ...prev, amount: 100 }));
                   }
                 }}
               >
-                <span className="balance-amount">₹{(totalDollar * INR_RATE).toFixed(2)}</span>
+                <span className="balance-amount">₹{totalRupee.toFixed(2)}</span>
                 <span className="balance-currency font-black text-[9px]">INR</span>
               </div>
 
@@ -1034,7 +1033,7 @@ const AviatorFunGame = () => {
                 onClick={() => {
                   if (gameState !== "FLYING") {
                     setDisplayMode("STAR");
-                    setCurrency("star");
+                    setCurrency(modeToWallet("STAR"));
                     setPanel1(prev => ({ ...prev, amount: 30 }));
                     setPanel2(prev => ({ ...prev, amount: 30 }));
                   }
@@ -1381,7 +1380,7 @@ const AviatorFunGame = () => {
           <div className="right-menu-body scrollbar">
             <div className="menu-account-box">
               <span className="menu-account-label">Current Balance</span>
-              <span className="menu-account-balance">{currency === "star" ? `★${Math.floor(balance).toLocaleString()}` : `$${balance.toFixed(2)}`}</span>
+              <span className="menu-account-balance">{formatMoney(balance)}</span>
             </div>
             
             <div className="menu-actions">

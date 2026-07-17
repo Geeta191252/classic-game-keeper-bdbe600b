@@ -55,7 +55,7 @@ async function getOrCreateUser(telegramUserId) {
   const numericId = Number(telegramUserId);
   if (!numericId || isNaN(numericId)) {
     // Return a default demo user object without DB
-    return { telegramId: 0, dollarBalance: 0, starBalance: 0, save: async () => {} };
+    return { telegramId: 0, dollarBalance: 0, rupeeBalance: 0, starBalance: 0, dollarWinning: 0, rupeeWinning: 0, starWinning: 0, save: async () => {} };
   }
   let user = await User.findOne({ telegramId: numericId });
   if (!user) {
@@ -66,6 +66,30 @@ async function getOrCreateUser(telegramUserId) {
     });
   }
   return user;
+}
+
+function normalizeCurrency(currency) {
+  if (currency === "star") return "star";
+  if (currency === "rupee" || currency === "inr") return "rupee";
+  return "dollar";
+}
+
+function getCurrencyFields(currency) {
+  const curr = normalizeCurrency(currency);
+  if (curr === "star") return { curr, balanceField: "starBalance", winningField: "starWinning", symbol: "⭐" };
+  if (curr === "rupee") return { curr, balanceField: "rupeeBalance", winningField: "rupeeWinning", symbol: "₹" };
+  return { curr, balanceField: "dollarBalance", winningField: "dollarWinning", symbol: "$" };
+}
+
+function balancePayload(user) {
+  return {
+    dollarBalance: user.dollarBalance || 0,
+    rupeeBalance: user.rupeeBalance || 0,
+    starBalance: user.starBalance || 0,
+    dollarWinning: user.dollarWinning || 0,
+    rupeeWinning: user.rupeeWinning || 0,
+    starWinning: user.starWinning || 0,
+  };
 }
 
 // Credit pending referral reward to referrer when this user makes their first deposit.
@@ -335,10 +359,7 @@ app.post("/api/balance", async (req, res) => {
     user.lastActive = new Date();
     await user.save();
     return res.json({
-      dollarBalance: user.dollarBalance,
-      starBalance: user.starBalance,
-      dollarWinning: user.dollarWinning || 0,
-      starWinning: user.starWinning || 0,
+      ...balancePayload(user),
       referralCount: user.referralCount || 0,
     });
   } catch (error) {
@@ -597,7 +618,7 @@ app.post("/api/admin/users", async (req, res) => {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    const users = await User.find({}).sort({ createdAt: -1 }).select('telegramId username firstName lastName dollarBalance starBalance dollarWinning starWinning lastActive createdAt').lean();
+    const users = await User.find({}).sort({ createdAt: -1 }).select('telegramId username firstName lastName dollarBalance rupeeBalance starBalance dollarWinning rupeeWinning starWinning lastActive createdAt').lean();
 
     // Get pending withdrawal requests (include _id for approve/reject)
     const withdrawals = await Transaction.find({ type: "withdraw", status: "pending" })
@@ -691,11 +712,10 @@ app.post("/api/admin/adjust-balance", async (req, res) => {
 
     // Determine which field to adjust
     let field;
-    if (currency === "dollar" && balanceType === "deposit") field = "dollarBalance";
-    else if (currency === "dollar" && balanceType === "winning") field = "dollarWinning";
-    else if (currency === "star" && balanceType === "deposit") field = "starBalance";
-    else if (currency === "star" && balanceType === "winning") field = "starWinning";
-    else return res.status(400).json({ error: "Invalid currency/balanceType" });
+    const { balanceField, winningField } = getCurrencyFields(currency);
+    if (balanceType === "deposit") field = balanceField;
+    else if (balanceType === "winning") field = winningField;
+    else return res.status(400).json({ error: "Invalid balanceType" });
 
     const currentVal = user[field] || 0;
     const newVal = currentVal + amount;
@@ -721,10 +741,7 @@ app.post("/api/admin/adjust-balance", async (req, res) => {
       field,
       oldValue: currentVal,
       newValue: newVal,
-      dollarBalance: user.dollarBalance,
-      starBalance: user.starBalance,
-      dollarWinning: user.dollarWinning || 0,
-      starWinning: user.starWinning || 0,
+      ...balancePayload(user),
     });
   } catch (error) {
     console.error("Admin adjust error:", error);
@@ -792,8 +809,7 @@ app.post("/api/game/result", async (req, res) => {
     }
 
     const user = await getOrCreateUser(userId);
-    const balanceField = currency === "dollar" ? "dollarBalance" : "starBalance";
-    const winningField = currency === "dollar" ? "dollarWinning" : "starWinning";
+    const { curr, balanceField, winningField } = getCurrencyFields(currency);
 
     const walletBalance = user[balanceField] || 0;
     const winningBalance = user[winningField] || 0;
@@ -823,7 +839,7 @@ app.post("/api/game/result", async (req, res) => {
       await Transaction.create({
         telegramId: userId,
         type: "win",
-        currency,
+        currency: curr,
         amount: winAmount,
         status: "completed",
         game,
@@ -834,7 +850,7 @@ app.post("/api/game/result", async (req, res) => {
       await Transaction.create({
         telegramId: userId,
         type: "bet",
-        currency,
+        currency: curr,
         amount: -betAmount,
         status: "completed",
         game,
@@ -843,10 +859,7 @@ app.post("/api/game/result", async (req, res) => {
     }
 
     return res.json({
-      dollarBalance: user.dollarBalance,
-      starBalance: user.starBalance,
-      dollarWinning: user.dollarWinning || 0,
-      starWinning: user.starWinning || 0,
+      ...balancePayload(user),
     });
   } catch (error) {
     console.error("Game result error:", error);
@@ -1821,8 +1834,7 @@ async function advancePhase() {
         // Report to game/result endpoint logic
         try {
           const user = await getOrCreateUser(player.telegramId);
-          const balanceField = player.currency === "dollar" ? "dollarBalance" : "starBalance";
-          const winningField = player.currency === "dollar" ? "dollarWinning" : "starWinning";
+          const { winningField } = getCurrencyFields(player.currency);
 
           if (winAmount > 0) {
             user[winningField] = (user[winningField] || 0) + winAmount;
@@ -1936,8 +1948,7 @@ app.post("/api/greedy-king/bet", async (req, res) => {
     }
 
     const user = await getOrCreateUser(userId);
-    const balanceField = currency === "dollar" ? "dollarBalance" : "starBalance";
-    const winningField = currency === "dollar" ? "dollarWinning" : "starWinning";
+    const { curr, balanceField, winningField } = getCurrencyFields(currency);
     const walletBal = user[balanceField] || 0;
     const winningBal = user[winningField] || 0;
     const totalPlayable = walletBal + winningBal;
@@ -1960,16 +1971,13 @@ app.post("/api/greedy-king/bet", async (req, res) => {
       firstName: firstName || "Player",
       fruitIndex,
       amount,
-      currency,
+      currency: curr,
     });
 
     return res.json({
       success: true,
       roundNumber: greedyKingState.roundNumber,
-      dollarBalance: user.dollarBalance,
-      starBalance: user.starBalance,
-      dollarWinning: user.dollarWinning || 0,
-      starWinning: user.starWinning || 0,
+      ...balancePayload(user),
     });
   } catch (error) {
     console.error("Greedy King bet error:", error);
@@ -2041,6 +2049,7 @@ function makeAviatorPool() {
 }
 const aviatorState = {
   dollar: makeAviatorPool(),
+  rupee: makeAviatorPool(),
   star: makeAviatorPool(),
 };
 
@@ -2193,12 +2202,13 @@ async function aviatorPhaseTick(currency) {
 
 setInterval(() => {
   aviatorPhaseTick("dollar").catch(() => {});
+  aviatorPhaseTick("rupee").catch(() => {});
   aviatorPhaseTick("star").catch(() => {});
 }, 200);
 
 // GET /api/aviator/state?currency=dollar|star
 app.get("/api/aviator/state", (req, res) => {
-  const currency = req.query.currency === "star" ? "star" : "dollar";
+  const currency = normalizeCurrency(req.query.currency);
   const s = aviatorState[currency];
   const now = Date.now();
   let multiplier = 1;
@@ -2235,15 +2245,14 @@ app.get("/api/aviator/state", (req, res) => {
 app.post("/api/aviator/bet", async (req, res) => {
   try {
     const { userId, amount, currency, firstName, slot } = req.body;
-    const curr = currency === "star" ? "star" : "dollar";
+    const curr = normalizeCurrency(currency);
     const s = aviatorState[curr];
     if (s.phase !== "betting") return res.status(400).json({ error: "Betting closed for this round" });
     const numAmt = Number(amount);
     if (!numAmt || numAmt <= 0) return res.status(400).json({ error: "Invalid amount" });
 
     const user = await getOrCreateUser(userId);
-    const balField = curr === "dollar" ? "dollarBalance" : "starBalance";
-    const winField = curr === "dollar" ? "dollarWinning" : "starWinning";
+    const { balanceField: balField, winningField: winField } = getCurrencyFields(curr);
     const wallet = user[balField] || 0;
     const winning = user[winField] || 0;
     if (wallet + winning < numAmt) return res.status(400).json({ error: "Insufficient balance" });
@@ -2279,7 +2288,7 @@ app.post("/api/aviator/bet", async (req, res) => {
 app.post("/api/aviator/cancel", async (req, res) => {
   try {
     const { userId, currency, slot } = req.body;
-    const curr = currency === "star" ? "star" : "dollar";
+    const curr = normalizeCurrency(currency);
     const s = aviatorState[curr];
     if (s.phase !== "betting") return res.status(400).json({ error: "Cannot cancel — round already started" });
     const slotNum = slot === 2 ? 2 : 1;
@@ -2288,7 +2297,7 @@ app.post("/api/aviator/cancel", async (req, res) => {
     const bet = s.bets[key];
     if (!bet) return res.status(400).json({ error: "No bet to cancel" });
 
-    const balField = curr === "dollar" ? "dollarBalance" : "starBalance";
+    const { balanceField: balField } = getCurrencyFields(curr);
     user[balField] = (user[balField] || 0) + bet.amount;
     await user.save();
 
@@ -2306,7 +2315,7 @@ app.post("/api/aviator/cancel", async (req, res) => {
 app.post("/api/aviator/cashout", async (req, res) => {
   try {
     const { userId, currency, slot } = req.body;
-    const curr = currency === "star" ? "star" : "dollar";
+    const curr = normalizeCurrency(currency);
     const s = aviatorState[curr];
     if (s.phase !== "flying") return res.status(400).json({ error: "Cannot cash out now" });
 
@@ -2346,7 +2355,7 @@ app.post("/api/aviator/cashout", async (req, res) => {
 
     // Credit winning balance immediately + create win tx
     const user = await getOrCreateUser(numericId);
-    const winField = curr === "dollar" ? "dollarWinning" : "starWinning";
+    const { winningField: winField } = getCurrencyFields(curr);
     user[winField] = (user[winField] || 0) + win;
     await user.save();
     await Transaction.create({
@@ -2390,7 +2399,7 @@ app.post("/api/aviator/cashout", async (req, res) => {
 
 // GET /api/aviator/my-bet
 app.get("/api/aviator/my-bet", (req, res) => {
-  const curr = req.query.currency === "star" ? "star" : "dollar";
+  const curr = normalizeCurrency(req.query.currency);
   const s = aviatorState[curr];
   const numericId = Number(req.query.userId);
   const slots = [1, 2].map((slot) => {
@@ -2896,6 +2905,7 @@ function makeJetxPool() {
 }
 const jetxState = {
   dollar: makeJetxPool(),
+  rupee: makeJetxPool(),
   star: makeJetxPool(),
 };
 
@@ -2979,11 +2989,11 @@ function jetxSupervisor(currency) {
     jetxResetRound(currency);
   }
 }
-setInterval(() => { jetxSupervisor("dollar"); jetxSupervisor("star"); }, 250);
+setInterval(() => { jetxSupervisor("dollar"); jetxSupervisor("rupee"); jetxSupervisor("star"); }, 250);
 
 // GET /api/jetx/state?currency=dollar|star
 app.get("/api/jetx/state", (req, res) => {
-  const currency = req.query.currency === "star" ? "star" : "dollar";
+  const currency = normalizeCurrency(req.query.currency);
   const s = jetxState[currency];
   const now = Date.now();
   let multiplier = 1;
@@ -3017,15 +3027,14 @@ app.get("/api/jetx/state", (req, res) => {
 app.post("/api/jetx/bet", async (req, res) => {
   try {
     const { userId, amount, currency, firstName } = req.body;
-    const curr = currency === "star" ? "star" : "dollar";
+    const curr = normalizeCurrency(currency);
     const s = jetxState[curr];
     if (s.phase !== "betting") return res.status(400).json({ error: "Betting closed for this round" });
     const numAmt = Number(amount);
     if (!numAmt || numAmt <= 0) return res.status(400).json({ error: "Invalid amount" });
 
     const user = await getOrCreateUser(userId);
-    const balField = curr === "dollar" ? "dollarBalance" : "starBalance";
-    const winField = curr === "dollar" ? "dollarWinning" : "starWinning";
+    const { balanceField: balField, winningField: winField } = getCurrencyFields(curr);
     const wallet = user[balField] || 0;
     const winning = user[winField] || 0;
     if (wallet + winning < numAmt) return res.status(400).json({ error: "Insufficient balance" });
@@ -3058,7 +3067,7 @@ app.post("/api/jetx/bet", async (req, res) => {
 app.post("/api/jetx/cashout", async (req, res) => {
   try {
     const { userId, currency } = req.body;
-    const curr = currency === "star" ? "star" : "dollar";
+    const curr = normalizeCurrency(currency);
     const s = jetxState[curr];
     if (s.phase !== "flying") return res.status(400).json({ error: "Cannot cash out now" });
 
@@ -3075,7 +3084,7 @@ app.post("/api/jetx/cashout", async (req, res) => {
     bet.winAmount = win;
 
     const user = await getOrCreateUser(numericId);
-    const winField = curr === "dollar" ? "dollarWinning" : "starWinning";
+    const { winningField: winField } = getCurrencyFields(curr);
     user[winField] = (user[winField] || 0) + win;
     await user.save();
     await Transaction.create({
@@ -3097,7 +3106,7 @@ app.post("/api/jetx/cashout", async (req, res) => {
 
 // GET /api/jetx/my-bet?userId=&currency=
 app.get("/api/jetx/my-bet", (req, res) => {
-  const curr = req.query.currency === "star" ? "star" : "dollar";
+  const curr = normalizeCurrency(req.query.currency);
   const s = jetxState[curr];
   const key = String(Number(req.query.userId));
   const b = s.bets[key];
@@ -3166,7 +3175,7 @@ app.post("/api/upi/deposit-request", async (req, res) => {
     const tx = await Transaction.create({
       telegramId: numericUserId,
       type: "deposit",
-      currency: "dollar",
+      currency: "rupee",
       amount: Number(amount),
       status: "pending",
       description: `UPI Deposit (UTR: ${cleanedUtr})`
@@ -3177,7 +3186,7 @@ app.post("/api/upi/deposit-request", async (req, res) => {
       await bot.sendMessage(ownerId,
         `🔔 *New UPI Deposit Request!*\n\n` +
         `👤 User: ${user.firstName || "N/A"} (${numericUserId})\n` +
-        `💰 Amount: $${amount}\n` +
+        `💰 Amount: ₹${amount}\n` +
         `🆔 UTR: \`${cleanedUtr}\`\n\n` +
         `Approve or Reject via Admin Panel!`,
         { parse_mode: "Markdown" }
@@ -3287,7 +3296,8 @@ app.post("/api/admin/approve-deposit", async (req, res) => {
 
     const user = await User.findOne({ telegramId: tx.telegramId });
     if (user) {
-      user.dollarBalance = (user.dollarBalance || 0) + tx.amount;
+      const { balanceField } = getCurrencyFields(tx.currency);
+      user[balanceField] = (user[balanceField] || 0) + tx.amount;
       await user.save();
       await creditReferralOnDeposit(user.telegramId);
     }
@@ -3295,7 +3305,7 @@ app.post("/api/admin/approve-deposit", async (req, res) => {
     try {
       await bot.sendMessage(tx.telegramId,
         `✅ *UPI Deposit Approved!*\n\n` +
-        `💰 Amount: $${tx.amount}\n` +
+        `💰 Amount: ${tx.currency === "rupee" ? "₹" : "$"}${tx.amount}\n` +
         `📝 Ref: ${tx.description}\n\n` +
         `Your funds have been credited to your wallet balance. Enjoy playing!`,
         { parse_mode: "Markdown" }

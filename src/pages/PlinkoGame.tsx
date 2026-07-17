@@ -13,7 +13,7 @@ import {
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { reportGameResult } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, INR_RATE, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 import plinkoHeader from "@/assets/plinko-header.png";
 import plinkoPillar from "@/assets/plinko-pillar.png";
 
@@ -151,10 +151,12 @@ const PlinkoGame = () => {
     return () => { stopBgMusic(); };
   }, [musicOn]);
 
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const [localDollarAdj, setLocalDollarAdj] = useState(0);
+  const [localRupeeAdj, setLocalRupeeAdj] = useState(0);
   const [localStarAdj, setLocalStarAdj] = useState(0);
   const gameDollarBalance = dollarBalance + dollarWinning + localDollarAdj;
+  const gameRupeeBalance = rupeeBalance + rupeeWinning + localRupeeAdj;
   const gameStarBalance = starBalance + starWinning + localStarAdj;
 
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
@@ -172,8 +174,8 @@ const PlinkoGame = () => {
   const betCounterRef = useRef(0);
 
   const multipliers = useMemo(() => MULTIPLIER_TABLE[risk][lines], [risk, lines]);
-  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
-  const currentBalance = currencyMode === "INR" ? nativeBalance * INR_RATE : nativeBalance;
+  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : activeWallet === "rupee" ? gameRupeeBalance : gameStarBalance;
+  const currentBalance = nativeBalance;
 
   // Geometry
   const PEG_TOP = 3;
@@ -207,6 +209,7 @@ const PlinkoGame = () => {
 
     const nBet = toNativeAmount(bet, currencyMode);
     if (activeWallet === "dollar") setLocalDollarAdj((p) => p - nBet);
+    else if (activeWallet === "rupee") setLocalRupeeAdj((p) => p - nBet);
     else setLocalStarAdj((p) => p - nBet);
     if (soundRef.current) playBetSound();
 
@@ -254,6 +257,7 @@ const PlinkoGame = () => {
         game: "plinko",
       });
       setLocalDollarAdj(0);
+      setLocalRupeeAdj(0);
       setLocalStarAdj(0);
       refreshBalance();
     } catch (e) {

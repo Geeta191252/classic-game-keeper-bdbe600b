@@ -6,7 +6,7 @@ import { playBetSound, playSpinSound, playWinSound, playLoseSound, playCountdown
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { getTelegram, fetchGreedyKingState, placeGreedyKingBet, fetchMyGreedyKingBets, type CurrencyType, type GreedyKingState } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, INR_RATE, modeToWallet, toNativeAmount } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet } from "@/lib/gameCurrency";
 
 const FOOD_ITEMS = [
   { emoji: "🌭", name: "Hot Dog", multiplier: 10 },
@@ -36,7 +36,7 @@ const STAR_PLAYERS = [
   "Guest_wL5cZ", "Guest_bN4qW"
 ];
 
-const generateLeaderboard = (walletType: "dollar" | "star") => {
+const generateLeaderboard = (walletType: CurrencyType) => {
   const names = walletType === "dollar" ? DOLLAR_PLAYERS : STAR_PLAYERS;
   const seed = walletType === "dollar" ? 1 : 2;
   return names.map((name, i) => {
@@ -57,15 +57,15 @@ const GreedyKingGame = () => {
   const [soundOn, setSoundOn] = useState(true);
   const soundRef = useRef(true);
   useEffect(() => { soundRef.current = soundOn; }, [soundOn]);
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const gameDollarBalance = dollarBalance + dollarWinning;
+  const gameRupeeBalance = rupeeBalance + rupeeWinning;
   const gameStarBalance = starBalance + starWinning;
   const [todayProfits, setTodayProfits] = useState(0);
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
   const activeWallet = modeToWallet(currencyMode);
-  const setActiveWallet = (w: "dollar" | "star") => setCurrencyMode(w === "star" ? "STAR" : "USD");
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [leaderboardTab, setLeaderboardTab] = useState<"dollar" | "star">("dollar");
+  const [leaderboardTab, setLeaderboardTab] = useState<CurrencyType>("dollar");
   const [selectedBet, setSelectedBet] = useState(10);
 
   // Multiplayer state from server
@@ -197,7 +197,7 @@ const GreedyKingGame = () => {
 
   const betOnFruitClick = async (fruitIndex: number) => {
     if (phase !== "betting") return;
-    const currentBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
+    const currentBalance = activeWallet === "dollar" ? gameDollarBalance : activeWallet === "rupee" ? gameRupeeBalance : gameStarBalance;
     // Account for bets already placed this round (not yet reflected in server balance)
     const pendingBets = myBets.reduce((a, b) => a + b, 0);
     if (currentBalance - pendingBets < selectedBet) return;
@@ -285,7 +285,7 @@ const GreedyKingGame = () => {
               const hasBetOnThis = myBet > 0;
               const fruitBet = fruitBets[i];
               const otherBets = fruitBet ? fruitBet.totalAmount - myBet : 0;
-              const currentBal = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
+              const currentBal = activeWallet === "dollar" ? gameDollarBalance : activeWallet === "rupee" ? gameRupeeBalance : gameStarBalance;
               const pendingBets = myBets.reduce((a, b) => a + b, 0);
               const canBet = phase === "betting" && (currentBal - pendingBets) >= selectedBet;
 
@@ -568,7 +568,7 @@ const GreedyKingGame = () => {
                         </div>
                         <p className="text-xs font-semibold mt-1.5 text-center max-w-[70px] truncate" style={{ color: "hsl(0, 0%, 25%)" }}>{player.name}</p>
                         <div className="flex items-center gap-0.5 mt-0.5">
-                          <span className="text-xs">{activeWallet === "dollar" ? "💲" : "⭐"}</span>
+                          <span className="text-xs">{activeWallet === "dollar" ? "💲" : activeWallet === "rupee" ? "₹" : "⭐"}</span>
                           <span className="text-[10px] font-bold" style={{ color: "hsl(35, 90%, 45%)" }}>{player.amount}</span>
                         </div>
                       </motion.div>

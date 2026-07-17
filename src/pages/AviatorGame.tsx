@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { getTelegramUser, type CurrencyType, fetchAviatorState, placeAviatorBet, cashOutAviator, cancelAviatorBet, type AviatorState } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, toNativeAmount, toDisplayAmount, currencySymbol, INR_RATE } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 import logoImg from "@/assets/aviator/logo.png";
 import planeImg from "@/assets/aviator/plane.png";
@@ -33,23 +33,25 @@ const PLANE_FRAMES = [plane0, plane1, plane2, plane3];
 
 const PRESETS_BY_CURRENCY: Record<CurrencyType, number[]> = {
   dollar: [1, 5, 10, 25, 50, 100, 250],
+  rupee: [10, 50, 100, 500, 1000, 2500, 5000],
   star: [10, 25, 50, 100, 250, 500, 1000],
 };
 
 
 const formatMoney = (value: number, currency: CurrencyType) => {
   if (currency === "star") return `★${Number(value.toFixed(2))}`;
+  if (currency === "rupee") return `₹${value.toFixed(2)}`;
   return `$${value.toFixed(2)}`;
 };
 
 const AviatorGame = () => {
   const navigate = useNavigate();
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const tgUser = getTelegramUser();
 
   const [currency, setCurrency] = useState<CurrencyType>("dollar");
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
-  useEffect(() => { setCurrency(currencyMode === "STAR" ? "star" : "dollar"); }, [currencyMode]);
+  useEffect(() => { setCurrency(modeToWallet(currencyMode)); }, [currencyMode]);
   const [phase, setPhase] = useState<Phase>("betting");
   const [multiplier, setMultiplier] = useState(1);
   const [crashAt, setCrashAt] = useState(2);
@@ -69,8 +71,9 @@ const AviatorGame = () => {
   const lastRoundRef = useRef<number>(0);
 
   const totalDollar = dollarBalance + dollarWinning;
+  const totalRupee = rupeeBalance + rupeeWinning;
   const totalStar = starBalance + starWinning;
-  const balance = currency === "dollar" ? totalDollar : totalStar;
+  const balance = currency === "dollar" ? totalDollar : currency === "rupee" ? totalRupee : totalStar;
   const userName = tgUser?.first_name || tgUser?.username || "Player";
 
   const playSound = useCallback((audio: HTMLAudioElement | null) => {
@@ -455,7 +458,7 @@ const BetPanel = ({
 
   // Reset bet amount when currency mode changes
   useEffect(() => {
-    setBetAmount(currencyMode === "INR" ? defaultAmount * INR_RATE : currencyMode === "STAR" ? defaultAmount * 10 : defaultAmount);
+    setBetAmount(currencyMode === "INR" ? Math.max(10, defaultAmount) : currencyMode === "STAR" ? defaultAmount * 10 : defaultAmount);
   }, [currencyMode, defaultAmount]);
 
   // Lost-bet toast on crash

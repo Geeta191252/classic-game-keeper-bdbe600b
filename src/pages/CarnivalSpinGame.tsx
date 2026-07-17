@@ -6,7 +6,7 @@ import { playBetSound, playSpinSound, playWinSound, playLoseSound, playResultRev
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { reportGameResult } from "@/lib/telegram";
 import GameCurrencyChips from "@/components/GameCurrencyChips";
-import { GameCurrencyMode, INR_RATE, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
+import { GameCurrencyMode, modeToWallet, toNativeAmount, currencySymbol } from "@/lib/gameCurrency";
 
 const SEGMENTS = [
   { label: "2X", multiplier: 2, color: "hsl(0, 70%, 55%)" },
@@ -32,10 +32,12 @@ const CarnivalSpinGame = () => {
   const [soundOn, setSoundOn] = useState(true);
   const soundRef = useRef(true);
   useEffect(() => { soundRef.current = soundOn; }, [soundOn]);
-  const { dollarBalance, starBalance, dollarWinning, starWinning, refreshBalance } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const [localDollarAdj, setLocalDollarAdj] = useState(0);
+  const [localRupeeAdj, setLocalRupeeAdj] = useState(0);
   const [localStarAdj, setLocalStarAdj] = useState(0);
   const gameDollarBalance = dollarBalance + dollarWinning + localDollarAdj;
+  const gameRupeeBalance = rupeeBalance + rupeeWinning + localRupeeAdj;
   const gameStarBalance = starBalance + starWinning + localStarAdj;
   const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
   const activeWallet = modeToWallet(currencyMode);
@@ -61,14 +63,15 @@ const CarnivalSpinGame = () => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
-  const currentBalance = currencyMode === "INR" ? nativeBalance * INR_RATE : nativeBalance;
+  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : activeWallet === "rupee" ? gameRupeeBalance : gameStarBalance;
+  const currentBalance = nativeBalance;
 
   const spin = () => {
     if (phase !== "betting" || currentBalance < selectedBet) return;
 
     const nativeBet = toNativeAmount(selectedBet, currencyMode);
     if (activeWallet === "dollar") setLocalDollarAdj(p => p - nativeBet);
+    else if (activeWallet === "rupee") setLocalRupeeAdj(p => p - nativeBet);
     else setLocalStarAdj(p => p - nativeBet);
 
     if (soundRef.current) playBetSound();
@@ -125,6 +128,7 @@ const CarnivalSpinGame = () => {
       reportGameResult({ betAmount: toNativeAmount(selectedBet, currencyMode), winAmount: toNativeAmount(prize, currencyMode), currency: activeWallet, game: "carnival-spin" })
         .then(() => {
           setLocalDollarAdj(0);
+          setLocalRupeeAdj(0);
           setLocalStarAdj(0);
           refreshBalance();
         }).catch(console.error);

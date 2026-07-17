@@ -1,6 +1,5 @@
 import { GameCurrencyMode } from "@/lib/gameCurrency";
 import { useBalanceContext } from "@/contexts/BalanceContext";
-import { INR_RATE } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 
 interface Props {
@@ -16,10 +15,12 @@ interface Props {
  * USD/INR share the dollar wallet, STAR uses the star wallet.
  */
 const GameCurrencyChips = ({ mode, onChange, disabled, className = "" }: Props) => {
-  const { dollarBalance, starBalance, dollarWinning, starWinning } = useBalanceContext();
+  const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning } = useBalanceContext();
   const totalDollar = dollarBalance + dollarWinning;
+  const totalRupee = rupeeBalance + rupeeWinning;
   const totalStar = starBalance + starWinning;
   const hasDollar = totalDollar > 0;
+  const hasRupee = totalRupee > 0;
   const hasStar = totalStar > 0;
 
   const chips: Array<{
@@ -41,10 +42,10 @@ const GameCurrencyChips = ({ mode, onChange, disabled, className = "" }: Props) 
     {
       id: "INR",
       label: "₹",
-      value: `₹${(totalDollar * INR_RATE).toFixed(0)}`,
+      value: `₹${totalRupee.toFixed(0)}`,
       activeBg: "bg-emerald-500",
       activeText: "text-white",
-      hasFunds: hasDollar,
+      hasFunds: hasRupee,
     },
     {
       id: "STAR",
