@@ -152,19 +152,9 @@ const JetXGame = () => {
         </div>
       </div>
 
-      {/* Currency toggle */}
-      <div className="flex gap-2 px-4 mt-3">
-        {(["dollar", "star"] as CurrencyType[]).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCurrency(c)}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
-              currency === c ? "bg-red-500/20 text-red-300 border border-red-500/50" : "bg-white/5 text-white/50"
-            }`}
-          >
-            {c === "dollar" ? "$ Dollar" : "⭐ Star"}
-          </button>
-        ))}
+      {/* Currency chips */}
+      <div className="flex justify-center px-4 mt-3">
+        <GameCurrencyChips mode={currencyMode} onChange={setCurrencyMode} disabled={phase !== "betting"} />
       </div>
 
       {/* History */}
