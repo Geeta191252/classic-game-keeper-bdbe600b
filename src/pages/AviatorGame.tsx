@@ -365,7 +365,8 @@ const AviatorGame = () => {
               multiplier={multiplier}
               roundNumber={roundNumber}
               currency={currency}
-              setCurrency={setCurrency}
+              currencyMode={currencyMode}
+              setCurrencyMode={setCurrencyMode}
               tgUserId={tgUser?.id}
               userName={userName}
               balance={balance}
