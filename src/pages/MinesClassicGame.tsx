@@ -655,7 +655,7 @@ const MinesClassicGame = () => {
             <div className="cashout-mult">x{cashoutDetails.multiplier}</div>
             <div className="cashout-sub">Winnings Collected:</div>
             <div className="cashout-winnings">
-              {currency === "dollar" ? `$${cashoutDetails.winAmount.toFixed(2)}` : `★${Math.floor(cashoutDetails.winAmount).toLocaleString()}`}
+              {currencyMode === "STAR" ? `★${Math.floor(cashoutDetails.winAmount).toLocaleString()}` : `${currencySymbol(currencyMode)}${cashoutDetails.winAmount.toFixed(2)}`}
             </div>
             <button className="ok-btn" style={{ background: "#10B981" }} onClick={closeWinModal}>
               Collect
