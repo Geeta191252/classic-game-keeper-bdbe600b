@@ -6,11 +6,11 @@ import {
   BarChart3, PiggyBank, LineChart, Network, DollarSign, Palette, TrendingUp,
   Target, CalendarClock, Crown, ShieldAlert, Type, Gift, Plane, Clock, Ticket,
   Settings, Layers, MinusCircle, UserCircle2, ChevronLeft, ChevronRight,
-  Bell, Search, Sparkles
+  Bell, Search, Sparkles, type LucideIcon,
 } from "lucide-react";
 import "@/styles/admin.css";
 
-type Item = { to: string; label: string; icon: React.ComponentType<{ className?: string; size?: number }> };
+type Item = { to: string; label: string; icon: LucideIcon };
 type Group = { label: string; items: Item[] };
 
 const GROUPS: Group[] = [
