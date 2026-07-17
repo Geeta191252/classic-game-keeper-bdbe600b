@@ -10,6 +10,10 @@ import { TonConnectUIProvider } from "@tonconnect/ui-react";
 import { Loader2 } from "lucide-react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import GameFrame from "./components/GameFrame";
+import { ReactElement } from "react";
+
+const framed = (el: ReactElement) => <GameFrame>{el}</GameFrame>;
 
 // Lazy-load heavy game pages so the home screen boots instantly and
 // each game only downloads its own chunk on demand (then cached).
@@ -118,19 +122,19 @@ const App = () => {
               <Suspense fallback={<RouteFallback />}>
                 <Routes>
                   <Route path="/" element={<Index />} />
-                  <Route path="/greedy-king" element={<GreedyKingGame />} />
-                  <Route path="/dice-master" element={<DiceMasterGame />} />
-                  <Route path="/carnival-spin" element={<CarnivalSpinGame />} />
-                  <Route path="/mines" element={<MinesGame />} />
-                  <Route path="/mines-classic" element={<MinesClassicGame />} />
-                  <Route path="/aviator" element={<AviatorGame />} />
-                  <Route path="/aviator-fun" element={<AviatorFunGame />} />
-                  <Route path="/plinko" element={<PlinkoGame />} />
-                  <Route path="/chicken-road" element={<ChickenRoadGame />} />
-                  <Route path="/chicken-classic" element={<ChickenClassicGame />} />
-                  <Route path="/jetx" element={<JetXGame />} />
-                   <Route path="/twist" element={<TwistGame />} />
-                  <Route path="/goblin-tower" element={<GoblinTower />} />
+                  <Route path="/greedy-king" element={framed(<GreedyKingGame />)} />
+                  <Route path="/dice-master" element={framed(<DiceMasterGame />)} />
+                  <Route path="/carnival-spin" element={framed(<CarnivalSpinGame />)} />
+                  <Route path="/mines" element={framed(<MinesGame />)} />
+                  <Route path="/mines-classic" element={framed(<MinesClassicGame />)} />
+                  <Route path="/aviator" element={framed(<AviatorGame />)} />
+                  <Route path="/aviator-fun" element={framed(<AviatorFunGame />)} />
+                  <Route path="/plinko" element={framed(<PlinkoGame />)} />
+                  <Route path="/chicken-road" element={framed(<ChickenRoadGame />)} />
+                  <Route path="/chicken-classic" element={framed(<ChickenClassicGame />)} />
+                  <Route path="/jetx" element={framed(<JetXGame />)} />
+                  <Route path="/twist" element={framed(<TwistGame />)} />
+                  <Route path="/goblin-tower" element={framed(<GoblinTower />)} />
                   <Route path="/admin" element={<AdminPanel />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
