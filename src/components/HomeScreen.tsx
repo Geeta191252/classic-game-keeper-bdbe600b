@@ -14,6 +14,7 @@ import EarnScreen from "./EarnScreen";
 import FriendsScreen from "./FriendsScreen";
 import WalletScreen from "./WalletScreen";
 import MarketScreen from "./MarketScreen";
+import OfferPopup from "./OfferPopup";
 import TournamentLeaderboard, { Tournament } from "./TournamentLeaderboard";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api`;
@@ -594,6 +595,8 @@ const HomeScreen = () => {
 
       {/* Bottom Nav Bar with dynamic icons */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {activeTab === 0 && <OfferPopup />}
 
       <AnimatePresence>
         {openTournament && (

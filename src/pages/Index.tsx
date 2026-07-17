@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
 import HomeScreen from "@/components/HomeScreen";
-import OfferPopup from "@/components/OfferPopup";
 import { processReferral } from "@/lib/telegram";
 
 const Index = () => {
@@ -62,7 +61,6 @@ const Index = () => {
             transition={{ duration: 0.3 }}
           >
             <HomeScreen />
-            <OfferPopup />
           </motion.div>
         )}
       </AnimatePresence>
