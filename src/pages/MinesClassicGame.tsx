@@ -144,10 +144,12 @@ const CUSTOM_MULTIPLIERS: Record<number, number[]> = {
   24: [23.75]
 };
 
-const PRESETS_BY_CURRENCY: Record<CurrencyType, number[]> = {
-  dollar: [1, 5, 10],
-  star: [100, 500, 1000]
+const PRESETS_BY_MODE: Record<GameCurrencyMode, number[]> = {
+  USD: [1, 5, 10],
+  INR: [100, 500, 1000],
+  STAR: [100, 500, 1000],
 };
+
 
 const MinesClassicGame = () => {
   const navigate = useNavigate();
@@ -208,8 +210,9 @@ const MinesClassicGame = () => {
 
   // Sync bet amount placeholder on currency changes
   useEffect(() => {
-    setBetInputStr(currency === "dollar" ? "1.00" : "100");
-  }, [currency]);
+    setBetInputStr(currencyMode === "USD" ? "1.00" : "100");
+  }, [currencyMode]);
+
 
 
 
@@ -228,15 +231,17 @@ const MinesClassicGame = () => {
   const handleMinBet = () => {
     unlockAudio();
     audioRef.current.playClick();
-    setBetInputStr(currency === "dollar" ? "0.10" : "10");
+    setBetInputStr(currencyMode === "USD" ? "0.10" : currencyMode === "INR" ? "10" : "10");
   };
 
   const handleMaxBet = () => {
     unlockAudio();
     audioRef.current.playClick();
-    const maxVal = currency === "dollar" ? 500 : 5000;
-    setBetInputStr(Math.min(balance, maxVal).toString());
+    const maxDisplay = currencyMode === "USD" ? 500 : currencyMode === "INR" ? 50000 : 5000;
+    const displayBal = currencyMode === "INR" ? balance * 85 : balance;
+    setBetInputStr(Math.min(displayBal, maxDisplay).toString());
   };
+
 
   const handlePresetSelect = (val: number) => {
     unlockAudio();
@@ -277,15 +282,15 @@ const MinesClassicGame = () => {
     }
 
     const parsedBet = parseFloat(betInputStr) || 0;
-    const minLimit = currency === "dollar" ? 0.1 : 10;
-    const maxLimit = currency === "dollar" ? 1000 : 10000;
+    const minLimit = currencyMode === "USD" ? 0.1 : currencyMode === "INR" ? 10 : 10;
+    const maxLimit = currencyMode === "USD" ? 1000 : currencyMode === "INR" ? 100000 : 10000;
 
     if (parsedBet < minLimit) {
-      toast.error(`Minimum bet is ${currency === "dollar" ? "$0.10" : "10 Stars"}`);
+      toast.error(`Minimum bet is ${currencySymbol(currencyMode)}${minLimit}`);
       return;
     }
     if (parsedBet > maxLimit) {
-      toast.error(`Maximum bet is ${currency === "dollar" ? "$1,000" : "10,000 Stars"}`);
+      toast.error(`Maximum bet is ${currencySymbol(currencyMode)}${maxLimit}`);
       return;
     }
     const nativeBet = toNativeAmount(parsedBet, currencyMode);
@@ -307,6 +312,7 @@ const MinesClassicGame = () => {
       toast.error("Connection failed, please try again.");
       return;
     }
+
 
     // Generate random bomb index positions upfront
     const positions = new Set<number>();
@@ -384,18 +390,19 @@ const MinesClassicGame = () => {
   // Safe cell revealed sequence
   const handleSafeCell = (idx: number) => {
     audioRef.current.playStar();
-    
-    const nextRevealed = { ...revealedCells, [idx]: "safe" as CellState };
-    setRevealedCells(nextRevealed);
 
-    // If successfully clicked all safe cells, trigger auto-cashout victory
-    const revealedCount = Object.keys(nextRevealed).length;
-    if (revealedCount === 25 - bombsCount) {
-      const maxMult = multipliersList[multipliersList.length - 1];
-      const parsedBet = parseFloat(betInputStr) || 0;
-      handleWinCashout(maxMult.toFixed(2) + "x", parsedBet * maxMult);
-    }
+    setRevealedCells(prev => {
+      const nextRevealed = { ...prev, [idx]: "safe" as CellState };
+      const revealedCount = Object.keys(nextRevealed).length;
+      if (revealedCount === 25 - bombsCount) {
+        const maxMult = multipliersList[multipliersList.length - 1];
+        const parsedBet = parseFloat(betInputStr) || 0;
+        setTimeout(() => handleWinCashout(maxMult.toFixed(2) + "x", parsedBet * maxMult), 0);
+      }
+      return nextRevealed;
+    });
   };
+
 
   // Trigger cashout to collect winnings
   const triggerCashout = () => {
@@ -550,17 +557,18 @@ const MinesClassicGame = () => {
 
         {/* Quick select presets */}
         <div className="presets-row">
-          {PRESETS_BY_CURRENCY[currency].map(val => (
+          {PRESETS_BY_MODE[currencyMode].map(val => (
             <button 
               key={val} 
               className="preset-btn" 
               onClick={() => handlePresetSelect(val)}
               disabled={phase !== "betting"}
             >
-              {currency === "dollar" ? `$${val}` : val}
+              {currencyMode === "STAR" ? `${val} ⭐` : `${currencySymbol(currencyMode)}${val}`}
             </button>
           ))}
         </div>
+
 
         {/* Bombs selection count */}
         <div className="control-label">Number Of Bombs</div>
@@ -612,7 +620,7 @@ const MinesClassicGame = () => {
             onClick={triggerCashout}
             disabled={safeOpens === 0 || phase !== "playing"}
           >
-            Cashout {safeOpens > 0 && `(${(parseFloat(betInputStr) * currentMultiplier).toFixed(2)})`}
+            Cashout {safeOpens > 0 && `(${currencyMode === "STAR" ? "★" : currencySymbol(currencyMode)}${(parseFloat(betInputStr) * currentMultiplier).toFixed(2)})`}
           </button>
         )}
 
@@ -648,7 +656,7 @@ const MinesClassicGame = () => {
             <div className="cashout-mult">x{cashoutDetails.multiplier}</div>
             <div className="cashout-sub">Winnings Collected:</div>
             <div className="cashout-winnings">
-              {currency === "dollar" ? `$${cashoutDetails.winAmount.toFixed(2)}` : `★${Math.floor(cashoutDetails.winAmount).toLocaleString()}`}
+              {currencyMode === "STAR" ? `★${Math.floor(cashoutDetails.winAmount).toLocaleString()}` : `${currencySymbol(currencyMode)}${cashoutDetails.winAmount.toFixed(2)}`}
             </div>
             <button className="ok-btn" style={{ background: "#10B981" }} onClick={closeWinModal}>
               Collect
