@@ -1172,64 +1172,8 @@ const TwistGame = () => {
             
             {/* Row 1: Balance & Bet */}
             <div className="panel-row">
-              <div className="flex gap-1.5 items-center">
-                {/* Dollar (USD) Balance */}
-                <div 
-                  className={`info-card balance-card cursor-pointer transition-all min-w-[70px] ${currency === "dollar" ? "ring-1 ring-[#00a2e8] bg-[#00a2e8]/10" : "bg-[#0d121f] opacity-60"}`}
-                  onClick={() => {
-                    if (isRoundActive) return;
-                    synthRef.current.init();
-                    synthRef.current.playClick();
-                    setCurrency("dollar");
-                    setBet(3);
-                  }}
-                >
-                  <div className="card-label">USD</div>
-                  <div className="card-value-wrapper">
-                    <span className="card-value text-[10px] leading-tight font-black text-white">
-                      ${totalDollar.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* INR Balance */}
-                <div 
-                  className={`info-card balance-card cursor-pointer transition-all min-w-[70px] ${currency === "dollar" ? "ring-1 ring-emerald-500 bg-emerald-500/10 text-emerald-400" : "bg-[#0d121f] opacity-60 text-emerald-500/70"}`}
-                  onClick={() => {
-                    if (isRoundActive) return;
-                    synthRef.current.init();
-                    synthRef.current.playClick();
-                    setCurrency("dollar");
-                    setBet(3);
-                  }}
-                >
-                  <div className="card-label text-emerald-400">INR</div>
-                  <div className="card-value-wrapper">
-                    <span className="card-value text-[10px] leading-tight font-black text-emerald-400">
-                      ₹{(totalDollar * 85).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
+              <div className="flex gap-1.5 items-center" />
 
-                {/* Star Balance */}
-                <div 
-                  className={`info-card balance-card cursor-pointer transition-all min-w-[70px] ${currency === "star" ? "ring-1 ring-amber-500 bg-amber-500/10 text-amber-400" : "bg-[#0d121f] opacity-60 text-amber-500/70"}`}
-                  onClick={() => {
-                    if (isRoundActive) return;
-                    synthRef.current.init();
-                    synthRef.current.playClick();
-                    setCurrency("star");
-                    setBet(30);
-                  }}
-                >
-                  <div className="card-label text-amber-400">STARS</div>
-                  <div className="card-value-wrapper">
-                    <span className="card-value text-[10px] leading-tight font-black text-amber-400">
-                      ★{Math.floor(totalStar).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
 
               <div className="bet-card">
                 <div className="bet-input-section">
