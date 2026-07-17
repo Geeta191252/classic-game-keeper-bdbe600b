@@ -577,7 +577,7 @@ const GoblinTower = () => {
                 <div className="bet-input-row-screenshot">
                   <button className="bet-adjust-btn-screenshot" onClick={() => adjustBet(currency === "dollar" ? -1 : -10)} disabled={isPlaying}>Min</button>
                   <div className="bet-value-display">
-                    <span className="bet-number-input-screenshot">{currency === "dollar" ? `${bet.toFixed(2)}` : `${bet}`}</span>
+                    <span className="bet-number-input-screenshot">{currencyMode === "STAR" ? `${bet} ⭐` : `${currencySymbol(currencyMode)}${bet.toFixed(2)}`}</span>
                   </div>
                   <button className="bet-adjust-btn-screenshot" onClick={() => adjustBet(currency === "dollar" ? 1 : 10)} disabled={isPlaying}>Max</button>
                 </div>
