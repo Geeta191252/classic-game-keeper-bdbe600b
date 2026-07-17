@@ -244,10 +244,12 @@ const MULTIPLIERS = [
   [0, 3.90, 12.5, 28.0, 52.0, 85.0, 133.0, 200.0, 1000.0]  // Fire (Outer)
 ];
 
-const PRESETS_BY_CURRENCY = {
-  dollar: [1, 3, 5, 10, 20, 50, 100],
-  star: [10, 25, 50, 100, 250, 500, 1000]
+const PRESETS_BY_MODE: Record<GameCurrencyMode, number[]> = {
+  USD: [1, 3, 5, 10, 20, 50, 100],
+  INR: [100, 300, 500, 1000, 2000, 5000, 10000],
+  STAR: [10, 25, 50, 100, 250, 500, 1000],
 };
+
 
 const stepAngles = MULTIPLIERS.map(arr => {
   const len = arr.length;
