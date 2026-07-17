@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { playBetSound, playSpinSound, playWinSound, playLoseSound, playResultReveal, startBgMusic, stopBgMusic } from "@/hooks/useGameSounds";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { reportGameResult } from "@/lib/telegram";
+import GameCurrencyChips from "@/components/GameCurrencyChips";
+import { GameCurrencyMode, INR_RATE, modeToWallet, toNativeAmount } from "@/lib/gameCurrency";
 
 const SEGMENTS = [
   { label: "2X", multiplier: 2, color: "hsl(0, 70%, 55%)" },
@@ -35,7 +37,8 @@ const CarnivalSpinGame = () => {
   const [localStarAdj, setLocalStarAdj] = useState(0);
   const gameDollarBalance = dollarBalance + dollarWinning + localDollarAdj;
   const gameStarBalance = starBalance + starWinning + localStarAdj;
-  const [activeWallet, setActiveWallet] = useState<"dollar" | "star">("dollar");
+  const [currencyMode, setCurrencyMode] = useState<GameCurrencyMode>("USD");
+  const activeWallet = modeToWallet(currencyMode);
   const [selectedBet, setSelectedBet] = useState(1);
   const [phase, setPhase] = useState<GamePhase>("betting");
   const [wheelAngle, setWheelAngle] = useState(0);
@@ -58,14 +61,15 @@ const CarnivalSpinGame = () => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  const currentBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
+  const nativeBalance = activeWallet === "dollar" ? gameDollarBalance : gameStarBalance;
+  const currentBalance = currencyMode === "INR" ? nativeBalance * INR_RATE : nativeBalance;
 
   const spin = () => {
     if (phase !== "betting" || currentBalance < selectedBet) return;
 
-    // Deduct bet
-    if (activeWallet === "dollar") setLocalDollarAdj(p => p - selectedBet);
-    else setLocalStarAdj(p => p - selectedBet);
+    const nativeBet = toNativeAmount(selectedBet, currencyMode);
+    if (activeWallet === "dollar") setLocalDollarAdj(p => p - nativeBet);
+    else setLocalStarAdj(p => p - nativeBet);
 
     if (soundRef.current) playBetSound();
     setPhase("spinning");
@@ -118,7 +122,7 @@ const CarnivalSpinGame = () => {
         if (soundRef.current) playLoseSound();
       }
       // Report result to backend, then reset local adjustments since backend now has the real balance
-      reportGameResult({ betAmount: selectedBet, winAmount: prize, currency: activeWallet, game: "carnival-spin" })
+      reportGameResult({ betAmount: toNativeAmount(selectedBet, currencyMode), winAmount: toNativeAmount(prize, currencyMode), currency: activeWallet, game: "carnival-spin" })
         .then(() => {
           setLocalDollarAdj(0);
           setLocalStarAdj(0);
@@ -162,6 +166,7 @@ const CarnivalSpinGame = () => {
           <p className="text-[10px] leading-tight" style={{ color: "hsl(0, 0%, 50%)" }}>Round</p>
           <p className="font-bold text-sm leading-tight" style={{ color: "hsl(0, 0%, 20%)" }}>#{round}</p>
         </div>
+        <GameCurrencyChips mode={currencyMode} onChange={setCurrencyMode} disabled={phase !== "betting"} />
       </div>
 
       {/* Title */}
@@ -336,7 +341,7 @@ const CarnivalSpinGame = () => {
           )}
         </div>
         <button
-          onClick={() => phase === "betting" && setActiveWallet(prev => prev === "dollar" ? "star" : "dollar")}
+          onClick={() => phase === "betting" && setCurrencyMode(activeWallet === "dollar" ? "STAR" : "USD")}
           className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-2 active:scale-90"
           style={{ background: "hsla(0, 0%, 100%, 0.95)", borderColor: "hsl(45, 80%, 55%)", opacity: phase !== "betting" ? 0.4 : 1 }}>
           <span className="text-xs">🔄</span>
