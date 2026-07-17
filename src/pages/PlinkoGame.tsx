@@ -384,8 +384,9 @@ const PlinkoGame = () => {
         <div
           className="relative w-full mx-auto rounded-2xl overflow-hidden"
           style={{
-            aspectRatio: "0.78",
-            maxWidth: "460px",
+            aspectRatio: "0.82",
+            maxWidth: "340px",
+
             background:
               "radial-gradient(ellipse at center top, hsl(270 70% 30%) 0%, hsl(260 75% 18%) 60%, hsl(255 80% 12%) 100%)",
             border: "2px solid hsla(45, 80%, 55%, 0.3)",
