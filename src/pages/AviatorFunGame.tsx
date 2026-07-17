@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
-import { type CurrencyType, reportGameResult, fetchAviatorState } from "@/lib/telegram";
+import { type CurrencyType, reportGameResult, fetchAviatorState, getTelegramUser } from "@/lib/telegram";
+
+type ServerBet = { user: string; amount: number; multiplier: number | null; cashout: number | null };
 
 // Small seeded PRNG so all clients render the same simulated players per round
 const mulberry32 = (seed: number) => {
