@@ -874,36 +874,56 @@ const AviatorFunGame = () => {
     });
   };
 
-  // Render player rows
+  // Render player rows — real bets only, current user's bet floats to top
   const renderedSidebarBets = useMemo(() => {
+    const myName = myNameRef.current;
+    const mapped = serverBets.map((b) => {
+      const isUser = (b.user || "").toLowerCase() === myName.toLowerCase();
+      const cashed = b.cashout != null && b.multiplier != null;
+      return {
+        name: b.user || "Player",
+        isUser,
+        betAmount: b.amount,
+        cashedOut: cashed,
+        winAmount: cashed ? Number(b.cashout) : 0,
+        targetMultiplier: cashed ? Number(b.multiplier) : 0,
+        avatarIdx: Math.abs((b.user || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % AVATAR_GRADIENTS.length,
+      };
+    });
+
     let displayList: any[] = [];
     if (activeSidebarTab === "all-bets") {
-      displayList = simPlayers;
+      // Own bets on top, then rest
+      const mine = mapped.filter(p => p.isUser);
+      const others = mapped.filter(p => !p.isUser);
+      displayList = [...mine, ...others];
     } else if (activeSidebarTab === "my-bets") {
-      if (panel1.status !== "NONE") {
-        displayList.push({
-          name: "You (Bet 1)",
-          isUser: true,
-          betAmount: panel1.amount,
-          cashedOut: panel1.status === "CASHED_OUT",
-          winAmount: panel1.winAmount || 0,
-          targetMultiplier: panel1.autoCashout ? panel1.autoMultiplier : 0,
-          panelId: "panel-1"
-        });
-      }
-      if (panel2.status !== "NONE") {
-        displayList.push({
-          name: "You (Bet 2)",
-          isUser: true,
-          betAmount: panel2.amount,
-          cashedOut: panel2.status === "CASHED_OUT",
-          winAmount: panel2.winAmount || 0,
-          targetMultiplier: panel2.autoCashout ? panel2.autoMultiplier : 0,
-          panelId: "panel-2"
-        });
+      displayList = mapped.filter(p => p.isUser);
+      // Fallback: if server hasn't caught up yet, show local panel state
+      if (displayList.length === 0) {
+        if (panel1.status !== "NONE") {
+          displayList.push({
+            name: "You (Bet 1)",
+            isUser: true,
+            betAmount: panel1.amount,
+            cashedOut: panel1.status === "CASHED_OUT",
+            winAmount: panel1.winAmount || 0,
+            targetMultiplier: panel1.autoCashout ? panel1.autoMultiplier : 0,
+          });
+        }
+        if (panel2.status !== "NONE") {
+          displayList.push({
+            name: "You (Bet 2)",
+            isUser: true,
+            betAmount: panel2.amount,
+            cashedOut: panel2.status === "CASHED_OUT",
+            winAmount: panel2.winAmount || 0,
+            targetMultiplier: panel2.autoCashout ? panel2.autoMultiplier : 0,
+          });
+        }
       }
     } else if (activeSidebarTab === "top-bets") {
-      displayList = [...simPlayers].filter(p => p.cashedOut).sort((a, b) => b.winAmount - a.winAmount).slice(0, 20);
+      displayList = [...mapped].filter(p => p.cashedOut).sort((a, b) => b.winAmount - a.winAmount).slice(0, 20);
     }
 
     return displayList.map((player, idx) => {
@@ -912,10 +932,10 @@ const AviatorFunGame = () => {
         if (v < 10.0) return "mid";
         return "high";
       };
-      
+
       const isCashed = player.cashedOut;
-      const mult = player.isUser ? (player.panelId === "panel-1" ? (panel1.winAmount ? panel1.winAmount / panel1.amount : 0) : (panel2.winAmount ? panel2.winAmount / panel2.amount : 0)) : player.targetMultiplier;
-      
+      const mult = player.targetMultiplier;
+
       return (
         <div key={idx} className={`bet-row ${isCashed ? "cashed-out" : ""}`} style={player.isUser ? { border: "1px solid rgba(235, 20, 72, 0.4)", backgroundColor: isCashed ? "rgba(44, 186, 66, 0.15)" : "rgba(225, 29, 72, 0.05)" } : {}}>
           <div className="player-info">
@@ -933,12 +953,12 @@ const AviatorFunGame = () => {
             ) : "-"}
           </div>
           <div className="win-val text-right">
-            {isCashed ? (currency === "star" ? `★${Math.floor(player.isUser ? (player.panelId === "panel-1" ? panel1.winAmount! : panel2.winAmount!) : player.winAmount)}` : `$${(player.isUser ? (player.panelId === "panel-1" ? panel1.winAmount! : panel2.winAmount!) : player.winAmount).toFixed(2)}`) : "-"}
+            {isCashed ? (currency === "star" ? `★${Math.floor(player.winAmount)}` : `$${player.winAmount.toFixed(2)}`) : "-"}
           </div>
         </div>
       );
     });
-  }, [activeSidebarTab, simPlayers, panel1, panel2, currency]);
+  }, [activeSidebarTab, serverBets, panel1, panel2, currency]);
 
   return (
     <div className="aviator-body">
