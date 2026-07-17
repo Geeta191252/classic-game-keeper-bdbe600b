@@ -333,7 +333,7 @@ const PlinkoGame = () => {
           alt="Plinko"
           animate={{ scale: [1, 1.02, 1] }}
           transition={{ duration: 2.4, repeat: Infinity }}
-          className="w-full max-w-[480px] h-auto pointer-events-none select-none"
+          className="w-full max-w-[320px] h-auto pointer-events-none select-none"
           style={{ filter: "drop-shadow(0 6px 12px hsla(0,0%,0%,0.5))" }}
           draggable={false}
         />
@@ -384,8 +384,9 @@ const PlinkoGame = () => {
         <div
           className="relative w-full mx-auto rounded-2xl overflow-hidden"
           style={{
-            aspectRatio: "0.78",
-            maxWidth: "460px",
+            aspectRatio: "0.82",
+            maxWidth: "340px",
+
             background:
               "radial-gradient(ellipse at center top, hsl(270 70% 30%) 0%, hsl(260 75% 18%) 60%, hsl(255 80% 12%) 100%)",
             border: "2px solid hsla(45, 80%, 55%, 0.3)",
@@ -569,12 +570,13 @@ const PlinkoGame = () => {
                   {lastMult}x
                 </div>
                 <div className="font-black text-base" style={{ color: "hsl(0 0% 100%)" }}>
-                  {lastWin >= bet ? "+ " : ""}
-                  {currencyMode === "USD" ? "$" : currencyMode === "INR" ? "₹" : ""}
+                  {lastWin > 0 ? "Won " : "Lost "}
+                  {currencyMode === "STAR" ? "" : currencySymbol(currencyMode)}
                   {lastWin.toFixed(2)}
                   {activeWallet === "star" ? " ⭐" : ""}
                 </div>
               </div>
+
             </motion.div>
           )}
         </AnimatePresence>
@@ -697,7 +699,7 @@ const PlinkoGame = () => {
                 border: "1px solid hsla(45,80%,55%,0.35)",
               }}
             >
-              +{p}{currencyMode === "USD" ? "$" : currencyMode === "INR" ? "₹" : "⭐"}
+              +{currencyMode === "STAR" ? `${p}⭐` : `${currencySymbol(currencyMode)}${p}`}
             </button>
           ))}
           <button
