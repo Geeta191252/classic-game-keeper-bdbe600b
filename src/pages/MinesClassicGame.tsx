@@ -179,6 +179,7 @@ const MinesClassicGame = () => {
   const [revealedCells, setRevealedCells] = useState<Record<number, CellState>>({});
   const [bombPositions, setBombPositions] = useState<Set<number>>(new Set());
   const [shakingCells, setShakingCells] = useState<Set<number>>(new Set());
+  const pendingCellsRef = useRef<Set<number>>(new Set());
 
   // Multipliers list based on current active bombs
   const multipliersList = useMemo(() => {
@@ -324,6 +325,7 @@ const MinesClassicGame = () => {
     setBombPositions(positions);
     setRevealedCells({});
     setShakingCells(new Set());
+    pendingCellsRef.current.clear();
     setPhase("playing");
   };
 
@@ -332,9 +334,11 @@ const MinesClassicGame = () => {
     unlockAudio();
     if (phase !== "playing") return;
     if (revealedCells[cellIdx]) return; // already clicked
+    if (pendingCellsRef.current.has(cellIdx)) return;
 
     // Play initial cell reveal tick
     audioRef.current.playClick();
+    pendingCellsRef.current.add(cellIdx);
     
     // Add shake animation
     setShakingCells(prev => new Set([...prev, cellIdx]));
@@ -345,16 +349,17 @@ const MinesClassicGame = () => {
         next.delete(cellIdx);
         return next;
       });
+      pendingCellsRef.current.delete(cellIdx);
 
       if (isRiggedRef.current) {
         // Force this clicked cell to be a bomb
         const nextPositions = new Set(bombPositions);
         nextPositions.add(cellIdx);
         setBombPositions(nextPositions);
-        handleExplodedCell(cellIdx);
+        handleExplodedCell(cellIdx, nextPositions);
       } else if (bombPositions.has(cellIdx)) {
         // Exploded!
-        handleExplodedCell(cellIdx);
+        handleExplodedCell(cellIdx, bombPositions);
       } else {
         // Safe!
         handleSafeCell(cellIdx);
@@ -363,14 +368,15 @@ const MinesClassicGame = () => {
   };
 
   // Exploded cell sequence
-  const handleExplodedCell = (idx: number) => {
+  const handleExplodedCell = (idx: number, positions: Set<number> = bombPositions) => {
     audioRef.current.playLose();
     setPhase("lost");
+    pendingCellsRef.current.clear();
 
     // Reveal all mines (bomb positions) and safe cells
     const finalReveals: Record<number, CellState> = {};
     for (let i = 0; i < 25; i++) {
-      if (bombPositions.has(i)) {
+      if (positions.has(i)) {
         finalReveals[i] = "mine";
       } else {
         finalReveals[i] = "safe";
@@ -383,6 +389,7 @@ const MinesClassicGame = () => {
       setPhase("betting");
       setRevealedCells({});
       setBombPositions(new Set());
+      pendingCellsRef.current.clear();
       refreshBalance();
     }, 2200);
   };
@@ -420,6 +427,7 @@ const MinesClassicGame = () => {
   // Cashout sequence success
   const handleWinCashout = async (multStr: string, winAmt: number) => {
     setPhase("cashed");
+    pendingCellsRef.current.clear();
     audioRef.current.playWin();
 
     try {
@@ -457,6 +465,7 @@ const MinesClassicGame = () => {
     setPhase("betting");
     setRevealedCells({});
     setBombPositions(new Set());
+    pendingCellsRef.current.clear();
     refreshBalance();
   };
 
