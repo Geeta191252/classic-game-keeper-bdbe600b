@@ -1,12 +1,15 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import {
-  ArrowDownToLine, ArrowUpFromLine, Users as UsersIcon, DollarSign, ChevronLeft, ChevronRight,
-  Filter, Plus, Search, Download, MoreHorizontal, TrendingUp, TrendingDown, Activity,
-  Wallet, Sparkles, Gamepad2, ShieldCheck, MessageSquare, Megaphone, KeyRound,
-  Palette, Clock, Ticket, Plane, Gift, Settings as SettingsIcon, Layers, MinusCircle,
-  UserCircle2, Type, ShieldAlert, Crown, Target, CalendarClock, PiggyBank,
-  LineChart, Network, BarChart3, Coins, Edit3, Trash2, Play, Pause, Copy, Check
+  ArrowDownToLine, ArrowUpFromLine, Users as UsersIcon,
+  Search, TrendingUp, TrendingDown, Activity, Wallet, Gamepad2,
+  ShieldAlert, Crown, RefreshCw, Loader2, CheckCircle2, XCircle,
+  DollarSign, Coins, Sparkles, Database, AlertCircle, Info,
 } from "lucide-react";
+import {
+  getSummary, listUsers, listTransactions, walletAdjust,
+  approveWithdrawal, rejectWithdrawal, getAnalytics, getGameStats,
+  type AdminSummary, type AdminUser, type AdminTx, type AnalyticsDay, type GameStatRow,
+} from "@/lib/adminApi";
 
 /* ============= Shared primitives ============= */
 
@@ -49,990 +52,606 @@ export function Section({
   );
 }
 
-export function Toolbar({ placeholder = "Search…", actions }: { placeholder?: string; actions?: ReactNode }) {
+function LoadingBlock({ label = "Loading real data…" }: { label?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-4">
-      <div className="flex-1 min-w-[240px] flex items-center gap-2 px-3 py-2 rounded-xl"
-           style={{ background: "rgba(10,15,26,0.7)", border: "1px solid var(--a-border)" }}>
-        <Search size={14} style={{ color: "var(--a-text-mute)" }} />
-        <input className="bg-transparent outline-none text-[13px] w-full placeholder:text-[var(--a-text-mute)]" placeholder={placeholder} />
-      </div>
-      <button className="a-btn"><Filter size={14} /> Filters</button>
-      {actions}
+    <div className="a-card flex items-center gap-3 py-10 justify-center" style={{ color: "var(--a-text-dim)" }}>
+      <Loader2 className="animate-spin" size={18} /> {label}
     </div>
   );
 }
 
-export function Pager({ total = 15 }: { total?: number }) {
+function ErrorBlock({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex items-center justify-between mt-4">
-      <div className="text-[12px]" style={{ color: "var(--a-text-dim)" }}>
-        Showing <select className="a-select inline-block w-16 py-1 px-2 ml-1 mr-1"><option>20</option><option>50</option></select> of {total} entries
+    <div className="a-card" style={{ border: "1px solid rgba(255,80,80,0.3)" }}>
+      <div className="flex items-center gap-2 text-[13px]" style={{ color: "#ffb0b0" }}>
+        <AlertCircle size={16} /> {message}
       </div>
-      <div className="flex items-center gap-2">
-        <button className="h-8 w-8 rounded-lg flex items-center justify-center a-btn a-btn-sm"><ChevronLeft size={14} /></button>
-        <div className="text-[12px]" style={{ color: "var(--a-text-dim)" }}>Page 1 of 1</div>
-        <button className="h-8 w-8 rounded-lg flex items-center justify-center a-btn a-btn-sm"><ChevronRight size={14} /></button>
+      {onRetry && (
+        <button className="a-btn a-btn-sm mt-3" onClick={onRetry}>
+          <RefreshCw size={12} /> Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
+function NotConnected({ title, note }: { title: string; note?: string }) {
+  return (
+    <div className="a-card text-center py-12">
+      <div className="mx-auto h-12 w-12 rounded-2xl flex items-center justify-center mb-4"
+           style={{ background: "rgba(74,168,255,0.12)", color: "var(--a-blue)" }}>
+        <Database size={22} />
+      </div>
+      <div className="text-white text-[16px] font-bold">{title}</div>
+      <div className="text-[13px] mt-2 max-w-md mx-auto" style={{ color: "var(--a-text-dim)" }}>
+        {note || "Ye feature aapke backend/database mein abhi enabled nahi hai. Jab actual data source ban jaayega, yeh page automatic connect ho jayega — koi dummy data yahan nahi dikhayenge."}
+      </div>
+      <div className="mt-4 text-[11px] inline-flex items-center gap-1" style={{ color: "var(--a-text-mute)" }}>
+        <Info size={12} /> Only real data shown across admin panel
       </div>
     </div>
   );
+}
+
+function money(v: number | undefined | null, sym = "") {
+  const n = Number(v || 0);
+  return `${sym}${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+function fmtDate(v?: string) {
+  if (!v) return "—";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+function userName(u: Pick<AdminUser, "firstName" | "lastName" | "username" | "telegramId">) {
+  const n = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  return n || u.username || `User #${u.telegramId}`;
 }
 
 /* ============= Dashboard ============= */
 
-const USERS_SAMPLE = [
-  { name: "admin3", earn: 0, game: 0, role: "admin" },
-  { name: "Rahul", earn: 0, game: 0, role: "player" },
-  { name: "Beant Kaur", earn: 1.96, game: 0, role: "player" },
-  { name: "admin2", earn: 0, game: 0, role: "admin" },
-  { name: "Anil kumar", earn: 0, game: 0, role: "player" },
-  { name: "test user", earn: 0, game: 0, role: "player" },
-  { name: "test", earn: 0, game: 1000, role: "player" },
-  { name: "Pawan Kumar", earn: 0, game: 0, role: "player" },
-];
-
 export function Dashboard() {
+  const [data, setData] = useState<AdminSummary | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true); setErr(null);
+    getSummary().then(setData).catch((e) => setErr(e.message)).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  if (loading) return <LoadingBlock />;
+  if (err) return <ErrorBlock message={err} onRetry={load} />;
+  if (!data) return null;
+
   return (
     <>
-      <Section eyebrow="USERS" title="Realtime user intelligence">
-        <div className="grid md:grid-cols-3 gap-4">
-          <StatCard label="Total users" value="15" hint="ALL TIME" icon={<UsersIcon size={16} />} tone="blue" />
-          <StatCard label="Active" value="15" hint="CURRENT ACTIVE STATUS" icon={<Activity size={16} />} tone="teal" />
-          <StatCard label="Suspended" value="0" hint="MANUAL OR AUTO FLAGS" icon={<ShieldAlert size={16} />} tone="red" />
+      <Section eyebrow="OVERVIEW" title="Realtime intelligence" right={
+        <button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /> Refresh</button>
+      }>
+        <div className="grid md:grid-cols-4 gap-4">
+          <StatCard label="Total users" value={String(data.totals.users)} hint="ALL TIME" icon={<UsersIcon size={16} />} tone="blue" />
+          <StatCard label="Active (24h)" value={String(data.totals.activeUsers)} hint="LAST 24 HOURS" icon={<Activity size={16} />} tone="teal" />
+          <StatCard label="Pending withdrawals" value={String(data.totals.pendingWithdrawals)} hint="AWAITING APPROVAL" icon={<ArrowUpFromLine size={16} />} tone="yellow" />
+          <StatCard label="Pending deposits" value={String(data.totals.pendingDeposits)} hint="AWAITING APPROVAL" icon={<ArrowDownToLine size={16} />} tone="pink" />
         </div>
+      </Section>
 
-        <div className="grid md:grid-cols-2 gap-4 mt-4">
+      <Section eyebrow="TREASURY" title="Currency totals (completed)">
+        <div className="grid md:grid-cols-3 gap-4">
           <div className="a-card">
-            <div className="text-white text-[14px] font-semibold">Status distribution</div>
-            <div className="mt-4 space-y-3">
-              <div>
-                <div className="flex justify-between text-[12px]"><span style={{ color: "var(--a-text-dim)" }}>Active</span><span className="text-white font-semibold">15</span></div>
-                <div className="a-bar-track mt-1"><div className="a-bar-fill" style={{ width: "100%" }} /></div>
-              </div>
-              <div>
-                <div className="flex justify-between text-[12px]"><span style={{ color: "var(--a-text-dim)" }}>Suspended</span><span className="text-white font-semibold">0</span></div>
-                <div className="a-bar-track mt-1"><div className="a-bar-fill" style={{ width: "0%" }} /></div>
-              </div>
+            <div className="a-stat-label">Dollar wallet</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[13px]">
+              <Kv label="Deposits" value={money(data.deposits.dollar, "$")} />
+              <Kv label="Withdrawals" value={money(data.withdrawals.dollar, "$")} />
+              <Kv label="Bets" value={money(data.bets.dollar, "$")} />
+              <Kv label="Wins" value={money(data.wins.dollar, "$")} />
+              <Kv label="User balances" value={money(data.balances.dollar, "$")} />
+              <Kv label="User winnings" value={money(data.balances.dollarW, "$")} />
             </div>
           </div>
-
           <div className="a-card">
-            <div className="flex justify-between items-center">
-              <div className="text-white text-[14px] font-semibold">Latest cohorts</div>
-              <div className="a-eyebrow">SYNCED LIVE</div>
+            <div className="a-stat-label">Rupee wallet</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[13px]">
+              <Kv label="Deposits" value={money(data.deposits.rupee, "₹")} />
+              <Kv label="Withdrawals" value={money(data.withdrawals.rupee, "₹")} />
+              <Kv label="Bets" value={money(data.bets.rupee, "₹")} />
+              <Kv label="Wins" value={money(data.wins.rupee, "₹")} />
+              <Kv label="User balances" value={money(data.balances.rupee, "₹")} />
+              <Kv label="User winnings" value={money(data.balances.rupeeW, "₹")} />
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              {USERS_SAMPLE.map((u) => (
-                <div key={u.name} className="a-card-tight a-card">
-                  <div className="flex justify-between items-start">
-                    <div className="text-[13px] font-semibold text-white">{u.name}</div>
-                    <span className="a-chip a-chip-active">ACTIVE</span>
-                  </div>
-                  <div className="flex justify-between items-end mt-1">
-                    <div className="text-[11px]" style={{ color: "var(--a-text-dim)" }}>Earning: ₹{u.earn} | Game: ₹{u.game}</div>
-                    <span className={`a-chip ${u.role === "admin" ? "a-chip-admin" : "a-chip-role"}`} style={{ padding: "1px 8px" }}>{u.role}</span>
-                  </div>
-                </div>
-              ))}
+          </div>
+          <div className="a-card">
+            <div className="a-stat-label">Star wallet</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[13px]">
+              <Kv label="Deposits" value={money(data.deposits.star, "★")} />
+              <Kv label="Withdrawals" value={money(data.withdrawals.star, "★")} />
+              <Kv label="Bets" value={money(data.bets.star, "★")} />
+              <Kv label="Wins" value={money(data.wins.star, "★")} />
+              <Kv label="User balances" value={money(data.balances.star, "★")} />
+              <Kv label="User winnings" value={money(data.balances.starW, "★")} />
             </div>
           </div>
         </div>
       </Section>
 
-      <Section eyebrow="WALLET & TREASURY" title="Capital posture">
-        <div className="grid md:grid-cols-2 gap-4">
-          <StatCard label="Total deposited" value="₹33,440" hint="REALTIME" icon={<DollarSign size={16} />} tone="green" />
-          <StatCard label="Total withdrawn" value="₹0" hint="REALTIME" icon={<ArrowUpFromLine size={16} />} tone="pink" />
-        </div>
-        <div className="a-card mt-4">
-          <div className="flex justify-between items-center">
-            <div className="text-white text-[14px] font-semibold">Pending finance actions</div>
-            <div className="text-[11px]" style={{ color: "var(--a-text-dim)" }}>Deposits 13 · Withdrawals 0</div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-3 mt-3">
-            <div className="a-card-tight a-card">
-              <div className="text-[13px] text-white font-semibold">Deposits</div>
-              <div className="a-stat-hint">AWAITING APPROVAL</div>
-              <div className="a-stat-num mt-1">13</div>
-            </div>
-            <div className="a-card-tight a-card">
-              <div className="text-[13px] text-white font-semibold">Withdrawals</div>
-              <div className="a-stat-hint">AWAITING APPROVAL</div>
-              <div className="a-stat-num mt-1">0</div>
-            </div>
-          </div>
-        </div>
+      <Section eyebrow="ACTIVITY" title="Recent transactions">
+        <TxTable items={data.recent as AdminTx[]} />
       </Section>
     </>
+  );
+}
+
+function Kv({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span style={{ color: "var(--a-text-mute)" }}>{label}</span>
+      <span className="text-white font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function symFor(c: string) { return c === "dollar" ? "$" : c === "rupee" ? "₹" : c === "star" ? "★" : ""; }
+
+function TxTable({ items }: { items: AdminTx[] }) {
+  if (!items.length) return <div className="a-card text-center py-8" style={{ color: "var(--a-text-dim)" }}>No transactions yet.</div>;
+  return (
+    <div className="a-card overflow-x-auto">
+      <table className="a-table w-full">
+        <thead>
+          <tr>
+            <th>Time</th><th>User</th><th>Type</th><th>Amount</th><th>Status</th><th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((t) => (
+            <tr key={t._id}>
+              <td>{fmtDate(t.createdAt)}</td>
+              <td>#{t.telegramId}</td>
+              <td><span className="a-chip">{t.type}</span></td>
+              <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
+              <td>
+                <span className="a-chip" style={{
+                  background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
+                              t.status === "pending" ? "rgba(255,196,0,0.14)" :
+                              "rgba(255,80,80,0.14)",
+                  color: t.status === "completed" ? "var(--a-green)" :
+                         t.status === "pending" ? "var(--a-yellow)" :
+                         "var(--a-red)",
+                }}>{t.status}</span>
+              </td>
+              <td style={{ color: "var(--a-text-dim)" }}>{t.game || t.description || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 /* ============= Users ============= */
 
-const USERS_TABLE = [
-  { n: "admin3", e: "sales3.brt@gmail.com", p: "9876456745", d: "7/17/2026", r: "admin", earn: 0, game: 0, m: 0 },
-  { n: "Rahul", e: "rahuljaiswal07565@gmail.com", p: "+918127639913", d: "7/16/2026", r: "player", earn: 0, game: 0, m: 0 },
-  { n: "Beant Kaur", e: "brainu1999@gmail.com", p: "+917065651713", d: "7/6/2026", r: "player", earn: 1.96, game: 27, m: 0 },
-  { n: "admin2", e: "admin2@123", p: "7523456765", d: "7/4/2026", r: "admin", earn: 0, game: 0, m: 0 },
-  { n: "Anil kumar", e: "anilbaghel5553@gmail.com", p: "+919760969394", d: "7/3/2026", r: "player", earn: 0, game: 0, m: 0 },
-  { n: "test user", e: "dev@gmail.com", p: "+919416983818", d: "6/29/2026", r: "player", earn: 0, game: 550, m: 0 },
-  { n: "test", e: "atest@gmail.com", p: "+919999991111", d: "6/3/2026", r: "player", earn: 0, game: 1272, m: 0 },
-  { n: "Pawan Kumar", e: "kingtrade234@gmail.com", p: "+919216072234", d: "4/7/2026", r: "player", earn: 0, game: 50, m: 0 },
-  { n: "King game", e: "asifraza1989786@gmail.com", p: "+917696730592", d: "4/7/2026", r: "player", earn: 146.32, game: 0, m: 0 },
-  { n: "Rajkhan", e: "fbagam75@gmail.com", p: "+918054550405", d: "4/7/2026", r: "player", earn: 0, game: 50, m: 0 },
-  { n: "Abhishek", e: "abhisir882@gmail.com", p: "+918948137777", d: "4/7/2026", r: "player", earn: 53.58, game: 50, m: 2 },
-  { n: "Abhi", e: "abhisir883@gmail.com", p: "+919415608615", d: "4/7/2026", r: "player", earn: 8.67, game: 0, m: 3 },
-  { n: "New User", e: "new@gmail.com", p: "+919999999999", d: "4/2/2026", r: "player", earn: 9892.883, game: 5497, m: 0 },
-  { n: "parent", e: "parent@gmail.com", p: "9999999900", d: "4/1/2026", r: "player", earn: 5536.698, game: 0, m: 5 },
-  { n: "Admin", e: "admin@gmail.com", p: "1234567890", d: "4/1/2026", r: "admin", earn: 1796.88, game: 0, m: 12 },
-];
-
 export function UsersPage() {
+  const [search, setSearch] = useState("");
+  const [q, setQ] = useState("");
+  const [data, setData] = useState<{ users: AdminUser[]; total: number } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true); setErr(null);
+    listUsers({ search: q, limit: 100 }).then(setData).catch((e) => setErr(e.message)).finally(() => setLoading(false));
+  };
+  useEffect(load, [q]);
+
   return (
-    <div className="a-card">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="a-eyebrow a-eyebrow-dim">USER MANAGEMENT</div>
-          <div className="text-white text-[18px] font-bold mt-1">Complete User Directory</div>
+    <>
+      <Section eyebrow="USERS" title={`Registered users${data ? ` (${data.total})` : ""}`}
+        right={<button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /> Refresh</button>}>
+        <div className="flex gap-2 mb-3">
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl"
+               style={{ background: "rgba(10,15,26,0.7)", border: "1px solid var(--a-border)" }}>
+            <Search size={14} style={{ color: "var(--a-text-mute)" }} />
+            <input
+              className="bg-transparent outline-none text-[13px] w-full placeholder:text-[var(--a-text-mute)]"
+              placeholder="Search by name, username, or Telegram ID"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setQ(search.trim())}
+            />
+          </div>
+          <button className="a-btn" onClick={() => setQ(search.trim())}>Search</button>
+          {q && <button className="a-btn" onClick={() => { setSearch(""); setQ(""); }}>Clear</button>}
         </div>
-        <div className="text-[12px]" style={{ color: "var(--a-text-dim)" }}>Total: 15 users</div>
+
+        {loading ? <LoadingBlock /> : err ? <ErrorBlock message={err} onRetry={load} /> : (
+          <div className="a-card overflow-x-auto">
+            <table className="a-table w-full">
+              <thead>
+                <tr><th>User</th><th>Telegram ID</th><th>$ balance</th><th>₹ balance</th><th>★ balance</th><th>Winnings</th><th>Joined</th></tr>
+              </thead>
+              <tbody>
+                {(data?.users || []).map((u) => (
+                  <tr key={u._id}>
+                    <td>
+                      <div className="text-white font-semibold">{userName(u)}</div>
+                      {u.username && <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>@{u.username}</div>}
+                    </td>
+                    <td>#{u.telegramId}</td>
+                    <td>${Number(u.dollarBalance || 0).toFixed(2)}</td>
+                    <td>₹{Number(u.rupeeBalance || 0).toFixed(2)}</td>
+                    <td>★{Number(u.starBalance || 0).toFixed(0)}</td>
+                    <td style={{ color: "var(--a-text-dim)" }}>
+                      ${Number(u.dollarWinning || 0).toFixed(2)} · ₹{Number(u.rupeeWinning || 0).toFixed(2)} · ★{Number(u.starWinning || 0).toFixed(0)}
+                    </td>
+                    <td style={{ color: "var(--a-text-dim)" }}>{fmtDate(u.createdAt)}</td>
+                  </tr>
+                ))}
+                {data?.users.length === 0 && (
+                  <tr><td colSpan={7} className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No users found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
+    </>
+  );
+}
+
+/* ============= Deposits / Withdrawals shared ============= */
+
+function TxFilterPage({
+  type, title, allowActions,
+}: { type: "deposit" | "withdraw"; title: string; allowActions?: boolean }) {
+  const [status, setStatus] = useState<string>("");
+  const [items, setItems] = useState<AdminTx[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true); setErr(null);
+    listTransactions({ type, status: status || undefined, limit: 100 })
+      .then((d) => setItems(d.items))
+      .catch((e) => setErr(e.message))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, [status]);
+
+  const approve = async (id: string) => {
+    setBusy(id);
+    try { await approveWithdrawal(id); load(); }
+    catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusy(null); }
+  };
+  const reject = async (id: string) => {
+    const reason = prompt("Reason for rejection?") || "Rejected by admin";
+    setBusy(id);
+    try { await rejectWithdrawal(id, reason); load(); }
+    catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    <Section eyebrow={type.toUpperCase() + "S"} title={title}
+      right={<button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /> Refresh</button>}>
+      <div className="flex gap-2 mb-3">
+        {["", "pending", "completed", "failed", "refunded"].map((s) => (
+          <button key={s || "all"}
+            className={`a-btn a-btn-sm ${status === s ? "a-btn-primary" : ""}`}
+            onClick={() => setStatus(s)}>
+            {s || "All"}
+          </button>
+        ))}
       </div>
-      <Toolbar placeholder="Search by fullname, email, or phone…" />
-      <div className="overflow-x-auto a-scroll">
-        <table className="a-table min-w-[900px]">
-          <thead><tr>
-            <th>User</th><th>Created</th><th>Roles</th><th>Wallet balance</th><th>Status</th><th>Total members</th><th>Login</th><th>Details</th>
-          </tr></thead>
-          <tbody>
-            {USERS_TABLE.map((u) => (
-              <tr key={u.e}>
-                <td>
-                  <div className="text-[13px] font-semibold text-white">{u.n}</div>
-                  <div className="text-[11.5px]" style={{ color: "var(--a-text-dim)" }}>{u.e}</div>
-                  <div className="text-[11.5px]" style={{ color: "var(--a-text-mute)" }}>{u.p}</div>
-                </td>
-                <td className="text-[12.5px]" style={{ color: "var(--a-text-dim)" }}>{u.d}</td>
-                <td><span className={`a-chip ${u.r === "admin" ? "a-chip-admin" : "a-chip-role"}`}>{u.r}</span></td>
-                <td>
-                  <div className="text-[12.5px]">Earning: ₹{u.earn}</div>
-                  <div className="text-[12.5px]">Gaming: ₹{u.game}</div>
-                </td>
-                <td><span className="a-chip a-chip-active">Active</span></td>
-                <td className="text-white font-semibold">{u.m}</td>
-                <td><button className="a-btn a-btn-primary a-btn-sm">Login</button></td>
-                <td><button className="a-btn a-btn-purple a-btn-sm">View Details</button></td>
+      {loading ? <LoadingBlock /> : err ? <ErrorBlock message={err} onRetry={load} /> : (
+        <div className="a-card overflow-x-auto">
+          <table className="a-table w-full">
+            <thead>
+              <tr>
+                <th>Time</th><th>User</th><th>Amount</th><th>Status</th>
+                {type === "withdraw" && <th>Address / Network</th>}
+                <th>Note</th>
+                {allowActions && <th>Actions</th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Pager total={15} />
-    </div>
+            </thead>
+            <tbody>
+              {items.map((t) => (
+                <tr key={t._id}>
+                  <td>{fmtDate(t.createdAt)}</td>
+                  <td>#{t.telegramId}</td>
+                  <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
+                  <td>
+                    <span className="a-chip" style={{
+                      background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
+                                  t.status === "pending" ? "rgba(255,196,0,0.14)" :
+                                  "rgba(255,80,80,0.14)",
+                      color: t.status === "completed" ? "var(--a-green)" :
+                             t.status === "pending" ? "var(--a-yellow)" :
+                             "var(--a-red)",
+                    }}>{t.status}</span>
+                  </td>
+                  {type === "withdraw" && (
+                    <td style={{ color: "var(--a-text-dim)" }}>
+                      {t.cryptoAddress ? <span title={t.cryptoAddress}>{t.cryptoAddress.slice(0, 8)}…{t.cryptoAddress.slice(-6)}</span> : "—"}
+                      {t.withdrawalNetwork && <span className="a-chip ml-2">{t.withdrawalNetwork}</span>}
+                    </td>
+                  )}
+                  <td style={{ color: "var(--a-text-dim)" }}>{t.description || "—"}</td>
+                  {allowActions && (
+                    <td>
+                      {t.status === "pending" ? (
+                        <div className="flex gap-1">
+                          <button disabled={busy === t._id} className="a-btn a-btn-sm" onClick={() => approve(t._id)} title="Approve">
+                            <CheckCircle2 size={12} style={{ color: "var(--a-green)" }} />
+                          </button>
+                          <button disabled={busy === t._id} className="a-btn a-btn-sm" onClick={() => reject(t._id)} title="Reject">
+                            <XCircle size={12} style={{ color: "var(--a-red)" }} />
+                          </button>
+                        </div>
+                      ) : <span style={{ color: "var(--a-text-mute)" }}>—</span>}
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr><td colSpan={allowActions ? (type === "withdraw" ? 7 : 6) : (type === "withdraw" ? 6 : 5)}
+                  className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No records.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Section>
   );
 }
 
-/* ============= Generic list/table page ============= */
-
-function GenericTable({
-  eyebrow, title, right, headers, rows, note,
-}: {
-  eyebrow: string; title: string; right?: ReactNode;
-  headers: string[]; rows: ReactNode[][]; note?: string;
-}) {
-  return (
-    <div className="a-card">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="a-eyebrow a-eyebrow-dim">{eyebrow}</div>
-          <div className="text-white text-[18px] font-bold mt-1">{title}</div>
-          {note && <div className="text-[12px] mt-1" style={{ color: "var(--a-text-dim)" }}>{note}</div>}
-        </div>
-        {right}
-      </div>
-      <Toolbar />
-      <div className="overflow-x-auto a-scroll">
-        <table className="a-table min-w-[720px]">
-          <thead><tr>{headers.map((h) => <th key={h}>{h}</th>)}</tr></thead>
-          <tbody>
-            {rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}
-          </tbody>
-        </table>
-      </div>
-      <Pager total={rows.length} />
-    </div>
-  );
-}
-
-const money = (n: number) => `₹${n.toLocaleString()}`;
-
-/* ============= Games ============= */
-const GAMES = [
-  "Aviator", "Aviator Fun", "Mines", "Mines Classic", "Dice Master", "Carnival Spin",
-  "Greedy King", "Plinko", "Chicken Road", "Chicken Classic", "JetX", "Twist", "Goblin Tower",
-];
-export function GamesPage() {
-  return (
-    <div className="grid md:grid-cols-3 gap-4">
-      {GAMES.map((g, i) => (
-        <div key={g} className="a-card">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(74,168,255,0.12)", color: "var(--a-blue)" }}>
-                <Gamepad2 size={18} />
-              </div>
-              <div>
-                <div className="text-white text-[14px] font-semibold">{g}</div>
-                <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>slug: {g.toLowerCase().replace(/\s+/g, "-")}</div>
-              </div>
-            </div>
-            <div className="a-toggle on" />
-          </div>
-          <div className="grid grid-cols-3 gap-2 mt-4">
-            <div className="a-card-tight a-card"><div className="text-[10.5px]" style={{ color: "var(--a-text-mute)" }}>PLAYS</div><div className="text-white font-semibold">{(i+1)*127}</div></div>
-            <div className="a-card-tight a-card"><div className="text-[10.5px]" style={{ color: "var(--a-text-mute)" }}>RTP</div><div className="text-white font-semibold">{92 + (i%6)}%</div></div>
-            <div className="a-card-tight a-card"><div className="text-[10.5px]" style={{ color: "var(--a-text-mute)" }}>MARGIN</div><div className="text-white font-semibold">{5 + (i%4)}%</div></div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button className="a-btn a-btn-sm flex-1 justify-center"><Edit3 size={12} /> Edit</button>
-            <button className="a-btn a-btn-sm flex-1 justify-center a-btn-primary">Configure</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ============= Banners ============= */
-export function BannersPage() {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="a-eyebrow a-eyebrow-dim">HOMEPAGE ASSETS</div>
-          <div className="text-white text-[18px] font-bold mt-1">Banners</div>
-        </div>
-        <button className="a-btn a-btn-primary"><Plus size={14} /> Add Banner</button>
-      </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        {[1,2,3,4].map((i) => (
-          <div key={i} className="a-card">
-            <div className="h-40 rounded-xl mb-3"
-                 style={{ background: `linear-gradient(135deg, hsl(${i*70},70%,45%), hsl(${i*70+40},70%,35%))` }} />
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="text-white text-[14px] font-semibold">Promotion Banner #{i}</div>
-                <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>Position: home_hero_{i}</div>
-              </div>
-              <div className="flex gap-2">
-                <button className="a-btn a-btn-sm"><Edit3 size={12} /></button>
-                <button className="a-btn a-btn-sm"><Trash2 size={12} /></button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ============= Moderators ============= */
-export function ModeratorsPage() {
-  return GenericTable({
-    eyebrow: "TEAM", title: "Moderators",
-    right: <button className="a-btn a-btn-primary"><Plus size={14} /> Add Moderator</button>,
-    headers: ["Name","Email","Role","Permissions","Last active","Status","Actions"],
-    rows: [
-      ["Riya Sharma","riya@thekinggame.online",<span key="1" className="a-chip a-chip-admin">super-admin</span>,"All","2m ago",<span key="2" className="a-chip a-chip-active">Online</span>,<button key="3" className="a-btn a-btn-sm"><MoreHorizontal size={12} /></button>],
-      ["Amit Verma","amit@thekinggame.online",<span key="1" className="a-chip a-chip-role">finance</span>,"Deposits, Withdrawals","1h ago",<span key="2" className="a-chip a-chip-active">Online</span>,<button key="3" className="a-btn a-btn-sm"><MoreHorizontal size={12} /></button>],
-      ["Neha Gupta","neha@thekinggame.online",<span key="1" className="a-chip a-chip-role">support</span>,"Tickets, Users","yesterday",<span key="2" className="a-chip a-chip-warn">Away</span>,<button key="3" className="a-btn a-btn-sm"><MoreHorizontal size={12} /></button>],
-      ["Karan Malhotra","karan@thekinggame.online",<span key="1" className="a-chip a-chip-role">games</span>,"Games, Aviator Bucket","3d ago",<span key="2" className="a-chip a-chip-danger">Offline</span>,<button key="3" className="a-btn a-btn-sm"><MoreHorizontal size={12} /></button>],
-    ],
-  });
-}
-
-/* ============= Support ============= */
-export function SupportPage() {
-  return (
-    <div className="grid md:grid-cols-3 gap-4">
-      <div className="md:col-span-1 a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Open tickets</div>
-        <div className="space-y-2">
-          {[
-            {u:"Rahul", s:"Deposit not credited", t:"3m ago", p:"high"},
-            {u:"Beant Kaur", s:"Withdraw stuck", t:"12m ago", p:"medium"},
-            {u:"Anil kumar", s:"KYC verification", t:"1h ago", p:"low"},
-            {u:"test user", s:"Aviator round issue", t:"3h ago", p:"medium"},
-            {u:"parent", s:"Referral bonus", t:"yesterday", p:"low"},
-          ].map((t,i) => (
-            <div key={i} className={`a-card-tight a-card cursor-pointer ${i===0 ? "" : ""}`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-white text-[13px] font-semibold">{t.u}</div>
-                  <div className="text-[11.5px]" style={{ color: "var(--a-text-dim)" }}>{t.s}</div>
-                </div>
-                <span className={`a-chip ${t.p==="high"?"a-chip-danger":t.p==="medium"?"a-chip-warn":"a-chip-role"}`}>{t.p}</span>
-              </div>
-              <div className="text-[11px] mt-1" style={{ color: "var(--a-text-mute)" }}>{t.t}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="md:col-span-2 a-card">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-white text-[14px] font-semibold">Rahul — Deposit not credited</div>
-            <div className="text-[11.5px]" style={{ color: "var(--a-text-mute)" }}>Ticket #4821 · opened 3m ago</div>
-          </div>
-          <div className="flex gap-2">
-            <button className="a-btn a-btn-sm">Assign</button>
-            <button className="a-btn a-btn-sm a-btn-primary">Resolve</button>
-          </div>
-        </div>
-        <div className="space-y-3 max-h-[420px] overflow-y-auto a-scroll pr-1">
-          <div className="a-card-tight a-card"><div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>Rahul · 3m ago</div><div className="text-[13px] mt-1">Bhai maine 500 rs deposit kiya UTR 33218812, abhi tak add nahi hua wallet mein.</div></div>
-          <div className="a-card-tight a-card" style={{ background: "rgba(77,227,211,0.06)", border: "1px solid rgba(77,227,211,0.15)" }}>
-            <div className="text-[11px]" style={{ color: "var(--a-teal)" }}>Support · 2m ago</div>
-            <div className="text-[13px] mt-1">Rahul ji, aapka payment gateway se pending status aa raha hai. 5 minute mein credit ho jayega, hum monitor kar rahe hain.</div>
-          </div>
-          <div className="a-card-tight a-card"><div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>Rahul · 1m ago</div><div className="text-[13px] mt-1">Ok bhai wait kar raha hu.</div></div>
-        </div>
-        <div className="mt-3 flex gap-2">
-          <input className="a-input" placeholder="Type your reply…" />
-          <button className="a-btn a-btn-primary">Send</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============= Announcements ============= */
-export function AnnouncementsPage() {
-  return (
-    <div className="grid md:grid-cols-3 gap-4">
-      <div className="md:col-span-2 space-y-3">
-        {[
-          {t:"System maintenance", d:"Sunday 3AM–4AM IST. Wallet withdrawals will be paused during this window.", tag:"scheduled"},
-          {t:"Diwali bonus event", d:"Get up to 50% bonus on deposits above ₹500. Valid till 15 Nov.", tag:"active"},
-          {t:"New game: Goblin Tower", d:"Climb the tower and win up to 100x. Now live in the games lobby.", tag:"active"},
-        ].map((a,i) => (
-          <div key={i} className="a-card">
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="text-white text-[14px] font-semibold">{a.t}</div>
-                <div className="text-[12.5px] mt-1" style={{ color: "var(--a-text-dim)" }}>{a.d}</div>
-              </div>
-              <span className={`a-chip ${a.tag==="active"?"a-chip-active":"a-chip-warn"}`}>{a.tag}</span>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button className="a-btn a-btn-sm"><Edit3 size={12} /> Edit</button>
-              <button className="a-btn a-btn-sm"><Trash2 size={12} /> Delete</button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Post announcement</div>
-        <label className="a-label">Title</label><input className="a-input" placeholder="Title" />
-        <label className="a-label mt-3">Message</label><textarea className="a-textarea" rows={5} placeholder="Message body…" />
-        <label className="a-label mt-3">Audience</label>
-        <select className="a-select"><option>All users</option><option>Players only</option><option>Admins only</option></select>
-        <button className="a-btn a-btn-primary w-full mt-4 justify-center"><Megaphone size={14} /> Publish</button>
-      </div>
-    </div>
-  );
-}
-
-/* ============= Forgotten passwords ============= */
-export function ForgottenPasswordsPage() {
-  return GenericTable({
-    eyebrow: "SECURITY", title: "Password reset requests",
-    headers: ["User","Email","Requested at","Status","Method","Actions"],
-    rows: [
-      ["Rahul","rahul@x.com","3m ago",<span key="1" className="a-chip a-chip-warn">pending</span>,"email",<button key="2" className="a-btn a-btn-sm a-btn-primary">Reset</button>],
-      ["Beant Kaur","brainu@x.com","1h ago",<span key="1" className="a-chip a-chip-active">verified</span>,"otp",<button key="2" className="a-btn a-btn-sm a-btn-primary">Reset</button>],
-      ["Anil kumar","anil@x.com","yesterday",<span key="1" className="a-chip a-chip-danger">expired</span>,"email",<button key="2" className="a-btn a-btn-sm">Retry</button>],
-      ["parent","parent@x.com","2d ago",<span key="1" className="a-chip a-chip-active">resolved</span>,"otp","—"],
-    ],
-  });
-}
-
-/* ============= Deposits / Withdrawals ============= */
-function payRow(u:string,a:number,m:string,st:"pending"|"approved"|"rejected") {
-  const chip = st==="approved" ? "a-chip-active" : st==="pending" ? "a-chip-warn" : "a-chip-danger";
-  return [u,money(a),m,<span key="s" className={`a-chip ${chip}`}>{st}</span>,"18 Jul 2026",
-    <div key="a" className="flex gap-2"><button className="a-btn a-btn-sm a-btn-primary">Approve</button><button className="a-btn a-btn-sm">Reject</button></div>];
-}
-export function DepositsPage() {
-  return GenericTable({
-    eyebrow: "FINANCIAL", title: "Deposits", note: "13 awaiting approval · ₹33,440 total lifetime",
-    right: <button className="a-btn"><Download size={14} /> Export CSV</button>,
-    headers: ["User","Amount","Method","Status","When","Actions"],
-    rows: [
-      payRow("Rahul", 500, "UPI", "pending"),
-      payRow("Beant Kaur", 250, "UPI", "approved"),
-      payRow("Anil kumar", 1000, "Bank", "pending"),
-      payRow("New User", 2500, "UPI", "approved"),
-      payRow("parent", 100, "UPI", "rejected"),
-      payRow("Pawan Kumar", 500, "USDT", "pending"),
-      payRow("King game", 1500, "UPI", "approved"),
-    ],
-  });
-}
-export function WithdrawalsPage() {
-  return GenericTable({
-    eyebrow: "FINANCIAL", title: "Withdrawals", note: "0 awaiting approval",
-    right: <button className="a-btn"><Download size={14} /> Export CSV</button>,
-    headers: ["User","Amount","Destination","Status","When","Actions"],
-    rows: [
-      ["parent", money(1200), "UPI · rahul@paytm", <span key="s" className="a-chip a-chip-active">approved</span>, "17 Jul 2026", <button key="a" className="a-btn a-btn-sm">Details</button>],
-      ["New User", money(500), "Bank · HDFC •• 8821", <span key="s" className="a-chip a-chip-active">approved</span>, "16 Jul 2026", <button key="a" className="a-btn a-btn-sm">Details</button>],
-      ["Rahul", money(300), "USDT · TRC20", <span key="s" className="a-chip a-chip-warn">processing</span>, "16 Jul 2026", <button key="a" className="a-btn a-btn-sm">Details</button>],
-    ],
-  });
-}
+export function DepositsPage() { return <TxFilterPage type="deposit" title="Deposits" />; }
+export function WithdrawalsPage() { return <TxFilterPage type="withdraw" title="Withdrawals" allowActions />; }
 
 /* ============= Wallet Adjust ============= */
+
 export function WalletAdjustPage() {
+  const [targetUserId, setTargetUserId] = useState("");
+  const [currency, setCurrency] = useState<"dollar" | "rupee" | "star">("dollar");
+  const [balanceType, setBalanceType] = useState<"deposit" | "winning">("deposit");
+  const [amount, setAmount] = useState("0");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null); setMsg(null);
+    const amt = Number(amount);
+    if (!targetUserId.trim() || !Number.isFinite(amt) || amt === 0) {
+      setErr("Enter a valid Telegram ID and non-zero amount");
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await walletAdjust({ targetUserId: targetUserId.trim(), currency, amount: amt, balanceType, note });
+      setMsg(`✅ Adjusted. New balances: $${r.balance.dollarBalance} · ₹${r.balance.rupeeBalance} · ★${r.balance.starBalance}`);
+      setAmount("0"); setNote("");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusy(false); }
+  };
+
   return (
-    <div className="grid md:grid-cols-3 gap-4">
-      <div className="md:col-span-1 a-card">
-        <div className="text-white text-[14px] font-semibold">Adjust user wallet</div>
-        <label className="a-label mt-3">User</label>
-        <select className="a-select"><option>Select user…</option>{USERS_TABLE.map((u) => <option key={u.e}>{u.n}</option>)}</select>
-        <label className="a-label mt-3">Wallet</label>
-        <select className="a-select"><option>Rupee (₹)</option><option>Dollar ($)</option><option>Star (★)</option></select>
-        <label className="a-label mt-3">Type</label>
-        <select className="a-select"><option>Credit</option><option>Debit</option></select>
-        <label className="a-label mt-3">Amount</label>
-        <input className="a-input" placeholder="0.00" />
-        <label className="a-label mt-3">Reason</label>
-        <textarea className="a-textarea" rows={3} placeholder="Note visible in audit log…" />
-        <button className="a-btn a-btn-primary w-full mt-4 justify-center"><Wallet size={14} /> Apply adjustment</button>
-      </div>
-      <div className="md:col-span-2 a-card">
-        <div className="flex justify-between items-center mb-3">
-          <div className="text-white text-[14px] font-semibold">Recent adjustments</div>
-          <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>Audit trail</div>
+    <Section eyebrow="TREASURY" title="Adjust user wallet">
+      <form onSubmit={submit} className="a-card max-w-2xl">
+        <div className="grid md:grid-cols-2 gap-3">
+          <div>
+            <label className="a-label">Target Telegram ID</label>
+            <input className="a-input" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} placeholder="e.g. 6965488457" />
+          </div>
+          <div>
+            <label className="a-label">Currency</label>
+            <select className="a-select" value={currency} onChange={(e) => setCurrency(e.target.value as any)}>
+              <option value="dollar">Dollar ($)</option>
+              <option value="rupee">Rupee (₹)</option>
+              <option value="star">Star (★)</option>
+            </select>
+          </div>
+          <div>
+            <label className="a-label">Bucket</label>
+            <select className="a-select" value={balanceType} onChange={(e) => setBalanceType(e.target.value as any)}>
+              <option value="deposit">Deposit balance</option>
+              <option value="winning">Winning balance</option>
+            </select>
+          </div>
+          <div>
+            <label className="a-label">Amount (use negative to deduct)</label>
+            <input className="a-input" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="a-label">Note (optional)</label>
+            <input className="a-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason / reference" />
+          </div>
         </div>
-        <table className="a-table">
-          <thead><tr><th>User</th><th>Wallet</th><th>Type</th><th>Amount</th><th>Reason</th><th>By</th></tr></thead>
+        {err && <div className="mt-3 text-[13px]" style={{ color: "#ff9b9b" }}>{err}</div>}
+        {msg && <div className="mt-3 text-[13px]" style={{ color: "var(--a-green)" }}>{msg}</div>}
+        <div className="flex justify-end mt-4">
+          <button disabled={busy} className="a-btn a-btn-primary">
+            {busy ? <Loader2 size={12} className="animate-spin" /> : <Coins size={12} />} Apply adjustment
+          </button>
+        </div>
+      </form>
+    </Section>
+  );
+}
+
+/* ============= Games ============= */
+
+export function GamesPage() {
+  const [data, setData] = useState<GameStatRow[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true); setErr(null);
+    getGameStats().then((d) => setData(d.games)).catch((e) => setErr(e.message)).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  if (loading) return <LoadingBlock />;
+  if (err) return <ErrorBlock message={err} onRetry={load} />;
+
+  return (
+    <Section eyebrow="GAMES" title="Per-game bet / win totals"
+      right={<button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /> Refresh</button>}>
+      <div className="a-card overflow-x-auto">
+        <table className="a-table w-full">
+          <thead>
+            <tr>
+              <th>Game</th><th>Bets ($)</th><th>Wins ($)</th><th>Bets (₹)</th><th>Wins (₹)</th>
+              <th>Bets (★)</th><th>Wins (★)</th><th>Total bets</th><th>Total wins</th>
+            </tr>
+          </thead>
           <tbody>
-            {[
-              {u:"Rahul",w:"₹",t:"credit",a:100,r:"Missed deposit compensation"},
-              {u:"parent",w:"₹",t:"debit",a:50,r:"Reverse bonus abuse"},
-              {u:"Beant Kaur",w:"$",t:"credit",a:5,r:"Support goodwill"},
-              {u:"New User",w:"★",t:"credit",a:500,r:"Event reward"},
-            ].map((x,i) => (
-              <tr key={i}>
-                <td>{x.u}</td><td>{x.w}</td>
-                <td><span className={`a-chip ${x.t==="credit"?"a-chip-active":"a-chip-danger"}`}>{x.t}</span></td>
-                <td>{x.w}{x.a}</td>
-                <td className="text-[12px]" style={{ color: "var(--a-text-dim)" }}>{x.r}</td>
-                <td>Admin</td>
+            {(data || []).map((g) => (
+              <tr key={g.game}>
+                <td className="text-white font-semibold">{g.game}</td>
+                <td>${g.bets.dollar.toFixed(2)}</td>
+                <td>${g.wins.dollar.toFixed(2)}</td>
+                <td>₹{g.bets.rupee.toFixed(2)}</td>
+                <td>₹{g.wins.rupee.toFixed(2)}</td>
+                <td>★{g.bets.star.toFixed(0)}</td>
+                <td>★{g.wins.star.toFixed(0)}</td>
+                <td>{g.betCount}</td>
+                <td>{g.winCount}</td>
               </tr>
             ))}
+            {(!data || data.length === 0) && (
+              <tr><td colSpan={9} className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No game bets recorded yet.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
-    </div>
+    </Section>
   );
 }
 
-/* ============= Analytics / charts (SVG placeholders) ============= */
-function LineChartSVG() {
-  return (
-    <svg viewBox="0 0 400 140" className="w-full h-40">
-      <defs>
-        <linearGradient id="lg" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#4de3d3" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="#4de3d3" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d="M0,110 L40,90 L80,100 L120,60 L160,70 L200,40 L240,55 L280,30 L320,45 L360,20 L400,35 L400,140 L0,140 Z" fill="url(#lg)" />
-      <path d="M0,110 L40,90 L80,100 L120,60 L160,70 L200,40 L240,55 L280,30 L320,45 L360,20 L400,35" fill="none" stroke="#4de3d3" strokeWidth="2" />
-    </svg>
-  );
-}
-function BarChartSVG() {
-  const bars = [40,60,35,80,55,90,70,50,85,65,45,75];
-  return (
-    <svg viewBox="0 0 400 140" className="w-full h-40">
-      {bars.map((v,i) => (
-        <rect key={i} x={i*32+6} y={140-v} width="22" height={v} rx="4"
-              fill={`url(#bg${i%2})`} />
-      ))}
-      <defs>
-        <linearGradient id="bg0" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#4aa8ff" /><stop offset="1" stopColor="#4de3d3" /></linearGradient>
-        <linearGradient id="bg1" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#a06bff" /><stop offset="1" stopColor="#4aa8ff" /></linearGradient>
-      </defs>
-    </svg>
-  );
-}
-function DonutSVG() {
-  return (
-    <svg viewBox="0 0 120 120" className="w-40 h-40">
-      <circle cx="60" cy="60" r="45" stroke="rgba(90,120,170,0.2)" strokeWidth="14" fill="none" />
-      <circle cx="60" cy="60" r="45" stroke="#4de3d3" strokeWidth="14" fill="none"
-              strokeDasharray="180 283" strokeLinecap="round" transform="rotate(-90 60 60)" />
-      <text x="60" y="65" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="700">64%</text>
-    </svg>
-  );
-}
+/* ============= Analytics ============= */
 
 export function AnalyticsPage() {
+  const [days, setDays] = useState(7);
+  const [data, setData] = useState<AnalyticsDay[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true); setErr(null);
+    getAnalytics(days).then((d) => setData(d.series)).catch((e) => setErr(e.message)).finally(() => setLoading(false));
+  };
+  useEffect(load, [days]);
+
+  const totals = useMemo(() => {
+    const t = { dep: 0, wd: 0, bet: 0, win: 0 };
+    (data || []).forEach((d) => {
+      t.dep += (d.deposit?.dollar || 0) + (d.deposit?.rupee || 0) + (d.deposit?.star || 0);
+      t.wd += (d.withdraw?.dollar || 0) + (d.withdraw?.rupee || 0) + (d.withdraw?.star || 0);
+      t.bet += (d.bet?.dollar || 0) + (d.bet?.rupee || 0) + (d.bet?.star || 0);
+      t.win += (d.win?.dollar || 0) + (d.win?.rupee || 0) + (d.win?.star || 0);
+    });
+    return t;
+  }, [data]);
+
   return (
     <>
-      <div className="grid md:grid-cols-4 gap-4">
-        <StatCard label="DAU" value="1,284" hint="LAST 24H" icon={<UsersIcon size={16} />} tone="teal" />
-        <StatCard label="GGR" value="₹1,20,450" hint="THIS WEEK" icon={<TrendingUp size={16} />} tone="green" />
-        <StatCard label="NGR" value="₹84,200" hint="THIS WEEK" icon={<DollarSign size={16} />} tone="blue" />
-        <StatCard label="Bet volume" value="₹9.4L" hint="THIS WEEK" icon={<Activity size={16} />} tone="purple" />
-      </div>
-      <div className="grid md:grid-cols-3 gap-4 mt-4">
-        <div className="md:col-span-2 a-card">
-          <div className="flex justify-between mb-3"><div className="text-white text-[14px] font-semibold">Revenue trend</div><span className="a-chip a-chip-live">30d</span></div>
-          <LineChartSVG />
-        </div>
-        <div className="a-card">
-          <div className="text-white text-[14px] font-semibold mb-3">Player retention</div>
-          <div className="flex justify-center"><DonutSVG /></div>
-        </div>
-      </div>
-      <div className="a-card mt-4">
-        <div className="flex justify-between mb-3"><div className="text-white text-[14px] font-semibold">Bets by game</div><span className="a-chip">Weekly</span></div>
-        <BarChartSVG />
-      </div>
-    </>
-  );
-}
-
-/* ============= Spare wallet / daily analytics ============= */
-export function SpareWalletPage() {
-  return GenericTable({
-    eyebrow: "TREASURY", title: "Spare wallet · Wingo, K3, TRX, 5D",
-    headers: ["Game","Period","Total bet","Total win","Margin","Balance"],
-    rows: [
-      ["Wingo 30s","last 24h", money(120450), money(96430), "20%", money(24020)],
-      ["Wingo 1m","last 24h", money(88300), money(72100), "18%", money(16200)],
-      ["K3","last 24h", money(45210), money(37800), "16%", money(7410)],
-      ["TRX","last 24h", money(31200), money(25900), "17%", money(5300)],
-      ["5D","last 24h", money(19800), money(15450), "22%", money(4350)],
-    ],
-  });
-}
-export function DailyAnalyticsPage() {
-  return (
-    <>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="a-card"><div className="text-white text-[14px] font-semibold mb-3">Wingo — daily P/L</div><BarChartSVG /></div>
-        <div className="a-card"><div className="text-white text-[14px] font-semibold mb-3">K3 — daily P/L</div><LineChartSVG /></div>
-      </div>
-      <div className="a-card mt-4">
-        <div className="text-white text-[14px] font-semibold mb-3">Daily breakdown</div>
-        <table className="a-table">
-          <thead><tr><th>Date</th><th>Bets</th><th>Wins</th><th>Net</th><th>Users</th><th>New users</th></tr></thead>
-          <tbody>{[0,1,2,3,4,5,6].map((i) => (
-            <tr key={i}><td>{`${18-i} Jul 2026`}</td><td>{money(120000-i*8200)}</td><td>{money(96000-i*7000)}</td><td className="text-[color:var(--a-green)] font-semibold">+{money(24000-i*1200)}</td><td>{1284-i*32}</td><td>{42-i*3}</td></tr>
-          ))}</tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-/* ============= Bonus / Financials report ============= */
-export function BonusIncomeReportPage() {
-  return GenericTable({
-    eyebrow: "MLM INSIGHTS", title: "Bonus & income report",
-    headers: ["User","Direct bonus","Level bonus","Salary","Rank reward","Total"],
-    rows: [
-      ["parent", money(4500), money(1200), money(1000), money(500), money(7200)],
-      ["Abhi", money(1200), money(300), "—", "—", money(1500)],
-      ["Abhishek", money(800), money(150), "—", "—", money(950)],
-      ["New User", money(300), "—", "—", "—", money(300)],
-    ],
-  });
-}
-export function FinancialsReportPage() {
-  return (
-    <>
-      <div className="grid md:grid-cols-4 gap-4">
-        <StatCard label="Deposits" value={money(33440)} icon={<ArrowDownToLine size={16} />} tone="green" />
-        <StatCard label="Withdrawals" value={money(2000)} icon={<ArrowUpFromLine size={16} />} tone="pink" />
-        <StatCard label="Bonuses paid" value={money(9950)} icon={<Gift size={16} />} tone="yellow" />
-        <StatCard label="Net treasury" value={money(21490)} icon={<Wallet size={16} />} tone="teal" />
-      </div>
-      <div className="a-card mt-4">
-        <div className="text-white text-[14px] font-semibold mb-3">Monthly ledger</div>
-        <LineChartSVG />
-      </div>
-    </>
-  );
-}
-
-/* ============= User theme ============= */
-export function UserThemePage() {
-  return (
-    <div className="grid md:grid-cols-3 gap-4">
-      {[
-        {n:"Midnight", c:["#0a0f1e","#4de3d3","#4aa8ff"]},
-        {n:"Sunset", c:["#1a0a1f","#ff6ea8","#ff8a3d"]},
-        {n:"Forest", c:["#08130f","#33d69f","#4de3d3"]},
-        {n:"Royal", c:["#0e0a20","#a06bff","#6a5bff"]},
-        {n:"Crimson", c:["#1a0808","#ff5b6a","#ff8a3d"]},
-        {n:"Ocean", c:["#061020","#4aa8ff","#4de3d3"]},
-      ].map((t,i) => (
-        <div key={t.n} className="a-card">
-          <div className="h-24 rounded-xl mb-3" style={{ background: `linear-gradient(135deg, ${t.c[0]}, ${t.c[1]}, ${t.c[2]})` }} />
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-white text-[14px] font-semibold">{t.n}</div>
-              <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>Active users: {(i+1)*217}</div>
-            </div>
-            <div className="flex gap-1">{t.c.map((c) => <span key={c} className="h-5 w-5 rounded-full" style={{ background: c, border:"1px solid rgba(255,255,255,0.1)" }} />)}</div>
-          </div>
-          <button className={`a-btn a-btn-sm w-full justify-center mt-3 ${i===0 ? "a-btn-primary" : ""}`}>{i===0 ? "Default theme" : "Set as default"}</button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ============= MLM Plans ============= */
-export function DepositPlansPage() {
-  return GenericTable({
-    eyebrow: "MLM PLANS", title: "Deposit plans",
-    right: <button className="a-btn a-btn-primary"><Plus size={14} /> New plan</button>,
-    headers: ["Plan","Min deposit","Max deposit","Bonus %","Direct %","Level %","Status"],
-    rows: [
-      ["Bronze", money(100), money(999), "5%", "5%", "1%", <span key="1" className="a-chip a-chip-active">active</span>],
-      ["Silver", money(1000), money(9999), "8%", "7%", "1.5%", <span key="1" className="a-chip a-chip-active">active</span>],
-      ["Gold", money(10000), money(49999), "10%", "10%", "2%", <span key="1" className="a-chip a-chip-active">active</span>],
-      ["Platinum", money(50000), money(199999), "12%", "12%", "3%", <span key="1" className="a-chip a-chip-warn">draft</span>],
-      ["Diamond", money(200000), "∞", "15%", "15%", "4%", <span key="1" className="a-chip a-chip-active">active</span>],
-    ],
-  });
-}
-export function BetPlansPage() {
-  return GenericTable({
-    eyebrow: "MLM PLANS", title: "Bet plans",
-    right: <button className="a-btn a-btn-primary"><Plus size={14} /> New plan</button>,
-    headers: ["Plan","Min bet","Max bet","Cashback %","Weekly cap","Status"],
-    rows: [
-      ["Starter", money(10), money(499), "1%", money(500), <span key="1" className="a-chip a-chip-active">active</span>],
-      ["Regular", money(500), money(4999), "2%", money(2500), <span key="1" className="a-chip a-chip-active">active</span>],
-      ["VIP", money(5000), money(49999), "3.5%", money(15000), <span key="1" className="a-chip a-chip-active">active</span>],
-      ["High Roller", money(50000), "∞", "5%", money(75000), <span key="1" className="a-chip a-chip-warn">invite</span>],
-    ],
-  });
-}
-export function SalaryIncomePage() {
-  return GenericTable({
-    eyebrow: "MLM PLANS", title: "Salary income",
-    headers: ["Rank","Team size","Team business","Monthly salary","Reward","Status"],
-    rows: [
-      ["Executive", "10", money(50000), money(1000), "T-shirt", <span key="1" className="a-chip a-chip-active">active</span>],
-      ["Manager", "25", money(200000), money(5000), "Smart watch", <span key="1" className="a-chip a-chip-active">active</span>],
-      ["Director", "100", money(1000000), money(25000), "Phone", <span key="1" className="a-chip a-chip-active">active</span>],
-      ["President", "500", money(5000000), money(100000), "Bike", <span key="1" className="a-chip a-chip-active">active</span>],
-      ["Crown", "2000", money(25000000), money(500000), "Car", <span key="1" className="a-chip a-chip-active">active</span>],
-    ],
-  });
-}
-export function RankSystemPage() {
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      {[
-        {r:"Executive", b:money(500), req:"₹10K team business"},
-        {r:"Manager", b:money(2500), req:"₹50K team business"},
-        {r:"Director", b:money(10000), req:"₹2L team business"},
-        {r:"President", b:money(50000), req:"₹10L team business"},
-        {r:"Crown", b:money(200000), req:"₹50L team business"},
-        {r:"Diamond Crown", b:money(1000000), req:"₹2Cr team business"},
-      ].map((x, i) => (
-        <div key={x.r} className="a-card">
-          <div className="flex justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(160,107,255,0.15)", color: "var(--a-purple)" }}>
-                <Crown size={20} />
-              </div>
-              <div>
-                <div className="text-white text-[15px] font-bold">{x.r}</div>
-                <div className="text-[11.5px]" style={{ color: "var(--a-text-dim)" }}>Rank #{i+1}</div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-white text-[14px] font-semibold">{x.b}</div>
-              <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>one-time bonus</div>
-            </div>
-          </div>
-          <div className="mt-3 text-[12.5px]" style={{ color: "var(--a-text-dim)" }}>Requirement: {x.req}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ============= Configuration pages ============= */
-function ToggleRow({ label, desc, on = true }: { label:string; desc:string; on?:boolean }) {
-  return (
-    <div className="flex items-center justify-between py-3 border-b" style={{ borderColor: "var(--a-border)" }}>
-      <div>
-        <div className="text-white text-[13.5px] font-semibold">{label}</div>
-        <div className="text-[12px]" style={{ color: "var(--a-text-dim)" }}>{desc}</div>
-      </div>
-      <div className={`a-toggle ${on ? "on" : ""}`} />
-    </div>
-  );
-}
-export function SystemControlsPage() {
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-2">Platform switches</div>
-        <ToggleRow label="Site online" desc="Enable player access to lobby & games" on />
-        <ToggleRow label="Deposits enabled" desc="Allow new deposits from all methods" on />
-        <ToggleRow label="Withdrawals enabled" desc="Process withdrawal queue" on />
-        <ToggleRow label="Signup open" desc="Accept new player registrations" on />
-        <ToggleRow label="KYC required" desc="Force KYC before first withdrawal" on={false} />
-        <ToggleRow label="Maintenance mode" desc="Shows maintenance banner to all users" on={false} />
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-2">Safeguards</div>
-        <ToggleRow label="Auto-suspend on VPN" desc="Block suspicious IPs automatically" on />
-        <ToggleRow label="Rate limit deposits" desc="Max 5 attempts / hour / user" on />
-        <ToggleRow label="Multi-account detection" desc="Flag matching device fingerprints" on />
-        <ToggleRow label="Bonus abuse guard" desc="Block bonuses on flagged wallets" on />
-        <ToggleRow label="Withdrawal 4-eye approval" desc="Two moderators must approve" on={false} />
-      </div>
-    </div>
-  );
-}
-export function SiteLogoPage() {
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Site identity</div>
-        <label className="a-label">Site name</label><input className="a-input" defaultValue="TheKingGame" />
-        <label className="a-label mt-3">Tagline</label><input className="a-input" defaultValue="Play. Win. Repeat." />
-        <label className="a-label mt-3">Support email</label><input className="a-input" defaultValue="support@thekinggame.online" />
-        <label className="a-label mt-3">Support phone</label><input className="a-input" defaultValue="+91 99999 99999" />
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Logo & favicon</div>
-        <div className="a-card-tight a-card flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#4de3d3,#4aa8ff)", color:"#04070d" }}><Sparkles size={22} /></div>
-            <div>
-              <div className="text-white text-[13px] font-semibold">Primary logo</div>
-              <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>256×256 · PNG</div>
-            </div>
-          </div>
-          <button className="a-btn a-btn-sm">Replace</button>
-        </div>
-        <div className="a-card-tight a-card mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-xl flex items-center justify-center" style={{ background: "rgba(30,42,68,0.6)" }}><Type size={18} /></div>
-            <div>
-              <div className="text-white text-[13px] font-semibold">Favicon</div>
-              <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>32×32 · ICO</div>
-            </div>
-          </div>
-          <button className="a-btn a-btn-sm">Replace</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-export function BonusSettingsPage() {
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Signup & referral</div>
-        <label className="a-label">Signup bonus (₹)</label><input className="a-input" defaultValue="50" />
-        <label className="a-label mt-3">Referral bonus for inviter (₹)</label><input className="a-input" defaultValue="100" />
-        <label className="a-label mt-3">Referral bonus for invitee (₹)</label><input className="a-input" defaultValue="50" />
-        <label className="a-label mt-3">Min deposit to unlock (₹)</label><input className="a-input" defaultValue="200" />
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Deposit bonus tiers</div>
-        <table className="a-table">
-          <thead><tr><th>Tier</th><th>Min ₹</th><th>Bonus %</th><th></th></tr></thead>
-          <tbody>
-            {[{t:"T1",m:100,b:5},{t:"T2",m:500,b:8},{t:"T3",m:1000,b:10},{t:"T4",m:5000,b:15}].map((x)=>(
-              <tr key={x.t}><td>{x.t}</td><td><input className="a-input" defaultValue={x.m} /></td><td><input className="a-input" defaultValue={x.b} /></td><td><button className="a-btn a-btn-sm"><Trash2 size={12} /></button></td></tr>
+      <Section eyebrow="ANALYTICS" title={`Activity — last ${days} days`}
+        right={
+          <div className="flex gap-1">
+            {[7, 14, 30, 90].map((n) => (
+              <button key={n} className={`a-btn a-btn-sm ${days === n ? "a-btn-primary" : ""}`} onClick={() => setDays(n)}>{n}d</button>
             ))}
-          </tbody>
-        </table>
-        <button className="a-btn a-btn-primary w-full mt-3 justify-center"><Plus size={14} /> Add tier</button>
-      </div>
-    </div>
-  );
-}
-export function AviatorBucketPage() {
-  return (
-    <>
-      <div className="grid md:grid-cols-4 gap-4">
-        <StatCard label="Current pool" value={money(184200)} hint="LIVE" icon={<Plane size={16} />} tone="teal" />
-        <StatCard label="Target margin" value="50%" hint="OWNER PROFIT" icon={<Target size={16} />} tone="green" />
-        <StatCard label="Round #" value="4,821" hint="TODAY" icon={<Activity size={16} />} tone="blue" />
-        <StatCard label="Last crash" value="2.14x" hint="42s AGO" icon={<TrendingDown size={16} />} tone="red" />
-      </div>
-      <div className="grid md:grid-cols-2 gap-4 mt-4">
-        <div className="a-card">
-          <div className="text-white text-[14px] font-semibold mb-3">Bucket controls</div>
-          <label className="a-label">Owner profit %</label><input className="a-input" defaultValue="50" />
-          <label className="a-label mt-3">Min crash multiplier</label><input className="a-input" defaultValue="1.00" />
-          <label className="a-label mt-3">Max crash multiplier</label><input className="a-input" defaultValue="100.00" />
-          <label className="a-label mt-3">Round interval (sec)</label><input className="a-input" defaultValue="6" />
-          <button className="a-btn a-btn-primary w-full mt-4 justify-center">Save bucket</button>
-        </div>
-        <div className="a-card">
-          <div className="text-white text-[14px] font-semibold mb-3">Recent rounds</div>
-          <div className="grid grid-cols-6 gap-2">
-            {[1.24,3.87,1.02,12.4,2.14,1.55,4.20,1.11,7.8,2.9,1.87,3.32,1.02,5.6,2.14,1.09,8.4,3.1].map((v,i)=>(
-              <div key={i} className="a-card-tight a-card text-center">
-                <div className={`text-[13px] font-bold ${v<2?"text-[color:var(--a-red)]":v<5?"text-[color:var(--a-yellow)]":"text-[color:var(--a-green)]"}`}>{v}x</div>
-              </div>
-            ))}
+            <button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /></button>
           </div>
+        }>
+        <div className="grid md:grid-cols-4 gap-4">
+          <StatCard label="Deposits (all)" value={money(totals.dep)} icon={<ArrowDownToLine size={16} />} tone="green" />
+          <StatCard label="Withdrawals (all)" value={money(totals.wd)} icon={<ArrowUpFromLine size={16} />} tone="red" />
+          <StatCard label="Bets (all)" value={money(totals.bet)} icon={<TrendingDown size={16} />} tone="yellow" />
+          <StatCard label="Wins (all)" value={money(totals.win)} icon={<TrendingUp size={16} />} tone="teal" />
         </div>
-      </div>
+        {loading ? <LoadingBlock /> : err ? <ErrorBlock message={err} onRetry={load} /> : (
+          <div className="a-card mt-4 overflow-x-auto">
+            <table className="a-table w-full">
+              <thead>
+                <tr><th>Day</th><th>Deposits</th><th>Withdrawals</th><th>Bets</th><th>Wins</th></tr>
+              </thead>
+              <tbody>
+                {(data || []).map((d) => (
+                  <tr key={d.day}>
+                    <td>{d.day}</td>
+                    <td>${(d.deposit?.dollar||0).toFixed(2)} · ₹{(d.deposit?.rupee||0).toFixed(2)} · ★{(d.deposit?.star||0).toFixed(0)}</td>
+                    <td>${(d.withdraw?.dollar||0).toFixed(2)} · ₹{(d.withdraw?.rupee||0).toFixed(2)} · ★{(d.withdraw?.star||0).toFixed(0)}</td>
+                    <td>${(d.bet?.dollar||0).toFixed(2)} · ₹{(d.bet?.rupee||0).toFixed(2)} · ★{(d.bet?.star||0).toFixed(0)}</td>
+                    <td>${(d.win?.dollar||0).toFixed(2)} · ₹{(d.win?.rupee||0).toFixed(2)} · ★{(d.win?.star||0).toFixed(0)}</td>
+                  </tr>
+                ))}
+                {(!data || data.length === 0) && (
+                  <tr><td colSpan={5} className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No completed transactions in this range.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
     </>
   );
 }
-export function CronManagementPage() {
-  return GenericTable({
-    eyebrow: "SCHEDULER", title: "Cron management",
-    right: <button className="a-btn a-btn-primary"><Plus size={14} /> New cron</button>,
-    headers: ["Job","Schedule","Last run","Next run","Status","Actions"],
-    rows: [
-      ["Daily rollup","0 1 * * *","today 01:00","tomorrow 01:00",<span key="1" className="a-chip a-chip-active">healthy</span>,
-        <div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Play size={12} /></button><button className="a-btn a-btn-sm"><Pause size={12} /></button></div>],
-      ["Salary payout","0 0 1 * *","01 Jul 00:00","01 Aug 00:00",<span key="1" className="a-chip a-chip-active">healthy</span>,
-        <div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Play size={12} /></button><button className="a-btn a-btn-sm"><Pause size={12} /></button></div>],
-      ["Bonus expiry","*/15 * * * *","2m ago","13m","...",<div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Play size={12} /></button><button className="a-btn a-btn-sm"><Pause size={12} /></button></div>],
-      ["Withdraw retry","*/5 * * * *","1m ago","4m",<span key="1" className="a-chip a-chip-warn">retrying</span>,
-        <div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Play size={12} /></button><button className="a-btn a-btn-sm"><Pause size={12} /></button></div>],
-    ],
-  });
-}
-export function GiftCodesPage() {
-  return GenericTable({
-    eyebrow: "PROMOTIONS", title: "Gift codes",
-    right: <button className="a-btn a-btn-primary"><Plus size={14} /> Generate code</button>,
-    headers: ["Code","Value","Max uses","Used","Expires","Status","Actions"],
-    rows: [
-      [<code key="c" className="text-[13px] text-white">DIWALI500</code>, money(500), "1000","842", "15 Nov 2026", <span key="s" className="a-chip a-chip-active">active</span>, <div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Copy size={12} /></button><button className="a-btn a-btn-sm"><Trash2 size={12} /></button></div>],
-      [<code key="c" className="text-[13px] text-white">WELCOME50</code>, money(50), "∞","3218", "never", <span key="s" className="a-chip a-chip-active">active</span>, <div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Copy size={12} /></button><button className="a-btn a-btn-sm"><Trash2 size={12} /></button></div>],
-      [<code key="c" className="text-[13px] text-white">VIP2000</code>, money(2000), "50","12", "31 Dec 2026", <span key="s" className="a-chip a-chip-active">active</span>, <div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Copy size={12} /></button><button className="a-btn a-btn-sm"><Trash2 size={12} /></button></div>],
-      [<code key="c" className="text-[13px] text-white">HOLI200</code>, money(200), "500","500", "expired", <span key="s" className="a-chip a-chip-danger">exhausted</span>, <div key="a" className="flex gap-1"><button className="a-btn a-btn-sm"><Copy size={12} /></button><button className="a-btn a-btn-sm"><Trash2 size={12} /></button></div>],
-    ],
-  });
-}
-export function SettingsPage() {
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">General</div>
-        <label className="a-label">Default currency</label>
-        <select className="a-select"><option>INR (₹)</option><option>USD ($)</option><option>Star (★)</option></select>
-        <label className="a-label mt-3">Timezone</label>
-        <select className="a-select"><option>Asia/Kolkata (IST)</option><option>UTC</option></select>
-        <label className="a-label mt-3">Language</label>
-        <select className="a-select"><option>English</option><option>Hindi</option></select>
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Notifications</div>
-        <ToggleRow label="Email alerts on deposit" desc="Notify finance moderators" on />
-        <ToggleRow label="Telegram alerts on withdrawal" desc="Instant ping to admin group" on />
-        <ToggleRow label="Suspicious activity SMS" desc="Push to on-call number" on={false} />
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Integrations</div>
-        {["Razorpay","PhonePe","UPI Intent","USDT (TRC-20)","Telegram Bot","Firebase FCM"].map((n) => (
-          <div key={n} className="flex items-center justify-between py-2 border-b" style={{ borderColor: "var(--a-border)" }}>
-            <div className="text-[13px]">{n}</div>
-            <span className="a-chip a-chip-active"><Check size={10} /> connected</span>
-          </div>
-        ))}
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Danger zone</div>
-        <button className="a-btn w-full justify-center mt-2" style={{ color: "var(--a-red)", borderColor: "rgba(255,91,106,0.35)" }}>Clear cache</button>
-        <button className="a-btn w-full justify-center mt-2" style={{ color: "var(--a-red)", borderColor: "rgba(255,91,106,0.35)" }}>Reset admin sessions</button>
-      </div>
-    </div>
-  );
-}
-export function DepositTypePage() {
-  return GenericTable({
-    eyebrow: "CONFIGURATION", title: "Deposit types & minimums",
-    right: <button className="a-btn a-btn-primary"><Plus size={14} /> Add method</button>,
-    headers: ["Method","Min","Max","Fee %","Status","Actions"],
-    rows: [
-      ["UPI", money(100), money(100000), "0%", <span key="1" className="a-chip a-chip-active">enabled</span>, <button key="2" className="a-btn a-btn-sm"><Edit3 size={12} /></button>],
-      ["Bank transfer", money(500), money(500000), "0%", <span key="1" className="a-chip a-chip-active">enabled</span>, <button key="2" className="a-btn a-btn-sm"><Edit3 size={12} /></button>],
-      ["USDT TRC-20", "$5", "$5000", "1%", <span key="1" className="a-chip a-chip-active">enabled</span>, <button key="2" className="a-btn a-btn-sm"><Edit3 size={12} /></button>],
-      ["Cards", money(200), money(50000), "2%", <span key="1" className="a-chip a-chip-warn">beta</span>, <button key="2" className="a-btn a-btn-sm"><Edit3 size={12} /></button>],
-    ],
-  });
-}
-export function WithdrawLimitPage() {
-  return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Global withdraw limits</div>
-        <label className="a-label">Min withdraw (₹)</label><input className="a-input" defaultValue="200" />
-        <label className="a-label mt-3">Max per transaction (₹)</label><input className="a-input" defaultValue="50000" />
-        <label className="a-label mt-3">Max per day (₹)</label><input className="a-input" defaultValue="200000" />
-        <label className="a-label mt-3">Max per month (₹)</label><input className="a-input" defaultValue="2000000" />
-        <label className="a-label mt-3">Withdraw window</label>
-        <select className="a-select"><option>24 × 7</option><option>10:00 – 22:00 IST</option></select>
-        <button className="a-btn a-btn-primary w-full mt-4 justify-center">Save limits</button>
-      </div>
-      <div className="a-card">
-        <div className="text-white text-[14px] font-semibold mb-3">Per-rank overrides</div>
-        <table className="a-table">
-          <thead><tr><th>Rank</th><th>Min ₹</th><th>Daily cap ₹</th></tr></thead>
-          <tbody>
-            {[{r:"Player",m:200,c:50000},{r:"VIP",m:200,c:200000},{r:"Executive",m:200,c:500000},{r:"Crown",m:200,c:2000000}].map((x)=>(
-              <tr key={x.r}><td>{x.r}</td><td><input className="a-input" defaultValue={x.m} /></td><td><input className="a-input" defaultValue={x.c} /></td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+
+/* ============= Profile ============= */
+
 export function ProfilePage() {
+  const email = "admin@gmail.com";
   return (
     <div className="grid md:grid-cols-3 gap-4">
       <div className="a-card md:col-span-1 text-center">
         <div className="h-24 w-24 rounded-2xl mx-auto flex items-center justify-center text-[36px] font-bold" style={{ background:"linear-gradient(135deg,#4de3d3,#4aa8ff)", color:"#04070d" }}>A</div>
         <div className="text-white text-[16px] font-bold mt-3">Admin</div>
-        <div className="text-[12px]" style={{ color: "var(--a-text-dim)" }}>admin@gmail.com</div>
+        <div className="text-[12px]" style={{ color: "var(--a-text-dim)" }}>{email}</div>
         <span className="a-chip a-chip-admin mt-3 inline-flex">super-admin</span>
-        <div className="grid grid-cols-2 gap-2 mt-4 text-left">
-          <div className="a-card-tight a-card"><div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>SESSIONS</div><div className="text-white font-semibold">14</div></div>
-          <div className="a-card-tight a-card"><div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>ACTIONS</div><div className="text-white font-semibold">1,284</div></div>
-        </div>
       </div>
       <div className="md:col-span-2 a-card">
         <div className="text-white text-[14px] font-semibold mb-3">Account details</div>
-        <div className="grid md:grid-cols-2 gap-3">
-          <div><label className="a-label">Full name</label><input className="a-input" defaultValue="Admin" /></div>
-          <div><label className="a-label">Username</label><input className="a-input" defaultValue="admin" /></div>
-          <div><label className="a-label">Email</label><input className="a-input" defaultValue="admin@gmail.com" /></div>
-          <div><label className="a-label">Phone</label><input className="a-input" defaultValue="1234567890" /></div>
-          <div><label className="a-label">New password</label><input className="a-input" type="password" placeholder="••••••" /></div>
-          <div><label className="a-label">Confirm password</label><input className="a-input" type="password" placeholder="••••••" /></div>
+        <div className="text-[13px]" style={{ color: "var(--a-text-dim)" }}>
+          Admin credentials are set via backend env variables <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code>.
+          To change them, update the Koyeb service environment variables and restart the service.
         </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <button className="a-btn">Cancel</button>
-          <button className="a-btn a-btn-primary">Save changes</button>
+        <div className="mt-4 text-[12px]" style={{ color: "var(--a-text-mute)" }}>
+          Session token is stored locally (30-day expiry). Logout clears it from this device.
         </div>
       </div>
     </div>
   );
 }
+
+/* ============= Feature-not-connected placeholders (all remaining pages) ============= */
+
+export function BannersPage()          { return <NotConnected title="Banners" note="Banner CRUD ke liye backend mein Banner model + endpoints add karne honge." />; }
+export function ModeratorsPage()       { return <NotConnected title="Moderators" note="Sirf ek admin abhi supported hai (env se). Multi-admin/roles enable karne ke liye AdminUser model chahiye." />; }
+export function SupportPage()          { return <NotConnected title="Support tickets" note="Support ticket collection abhi backend mein nahi hai." />; }
+export function AnnouncementsPage()    { return <NotConnected title="Announcements" note="Announcements collection abhi backend mein nahi hai." />; }
+export function ForgottenPasswordsPage(){return <NotConnected title="Forgotten passwords" note="Password reset requests track karne ke liye alag collection chahiye." />; }
+export function SpareWalletPage()      { return <NotConnected title="Spare wallet (Wingo/K3/…)" note="Ye games/wallet abhi is app ka part nahi hain." />; }
+export function DailyAnalyticsPage()   { return <NotConnected title="Daily analytics (Wingo/K3/…)" note="Ye analytics category abhi tracked nahi hai. Overall daily data ke liye Analytics page dekhein." />; }
+export function BonusIncomeReportPage(){ return <NotConnected title="Bonus & income report" note="Bonus/commission tracking backend mein enable karne ke baad connect ho jayega." />; }
+export function FinancialsReportPage() { return <NotConnected title="Financials report" note="Aggregated financial report ke liye extra endpoint add karna hoga (abhi Dashboard aur Analytics real-time totals dete hain)." />; }
+export function UserThemePage()        { return <NotConnected title="User theme" note="Per-user theme setting collection chahiye." />; }
+export function DepositPlansPage()     { return <NotConnected title="Deposit plans" note="MLM deposit plans backend mein nahi hai." />; }
+export function BetPlansPage()         { return <NotConnected title="Bet plans" note="MLM bet plans backend mein nahi hai." />; }
+export function SalaryIncomePage()     { return <NotConnected title="Salary income" note="MLM salary system backend mein nahi hai." />; }
+export function RankSystemPage()       { return <NotConnected title="Rank system" note="MLM rank system backend mein nahi hai." />; }
+export function SystemControlsPage()   { return <NotConnected title="System controls" note="Global system flags collection add karne ke baad connect hoga." />; }
+export function SiteLogoPage()         { return <NotConnected title="Site & logo" note="Site config Setting model use kar sakta hai — chahiye to add kar dete hain." />; }
+export function BonusSettingsPage()    { return <NotConnected title="Bonus settings" note="Bonus rules Setting model mein add karne ke baad connect hoga." />; }
+export function AviatorBucketPage()    { return <NotConnected title="Aviator bucket" note="Legacy /admin-legacy panel mein Aviator controls hain (profit %, manual crash queue). Yahaan integrate karna ho to batayein." />; }
+export function CronManagementPage()   { return <NotConnected title="Cron management" note="Backend cron jobs abhi manage karne ke liye endpoint nahi hai." />; }
+export function GiftCodesPage()        { return <NotConnected title="Gift codes" note="GiftCode collection abhi backend mein nahi hai." />; }
+export function SettingsPage()         { return <NotConnected title="Settings" note="Generic Setting collection exist karta hai but read/write UI abhi enable nahi kiya — chahiye to jodenge." />; }
+export function DepositTypePage()      { return <NotConnected title="Deposit type / min" note="Configurable deposit types collection chahiye." />; }
+export function WithdrawLimitPage()    { return <NotConnected title="Withdraw limit" note="Configurable withdraw limits collection chahiye." />; }
