@@ -337,6 +337,23 @@ const AviatorFunGame = () => {
     return `$${val.toFixed(2)}`;
   }, [displayMode]);
 
+  // Auto-pick display mode on first balance load:
+  // If user has no dollars but has stars → STAR. If no dollars & no stars → keep default.
+  // (INR shares dollar wallet, so USD == INR availability.)
+  useEffect(() => {
+    if (autoPickedRef.current) return;
+    if (totalDollar <= 0 && totalStar > 0) {
+      setDisplayMode("STAR");
+      setCurrency("star");
+      setPanel1(prev => ({ ...prev, amount: 30 }));
+      setPanel2(prev => ({ ...prev, amount: 30 }));
+      autoPickedRef.current = true;
+    } else if (totalDollar > 0 || totalStar > 0) {
+      // Balances have loaded — lock in default (USD) so we don't keep re-picking.
+      autoPickedRef.current = true;
+    }
+  }, [totalDollar, totalStar]);
+
   // Balance Auto Refill (Disabled for real money mode)
   useEffect(() => {
     // Real balance does not auto-refill
