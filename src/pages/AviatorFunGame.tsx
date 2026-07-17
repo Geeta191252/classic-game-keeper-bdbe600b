@@ -655,21 +655,16 @@ const AviatorFunGame = () => {
       const refState = stateRef.current;
 
       if (refState.gameState === "WAITING") {
-        refState.waitingTimer -= deltaTime;
-        const remaining = Math.max(0, refState.waitingTimer / 1000);
-        setWaitingCountdown(remaining);
-        
+        // Countdown display is driven by the server poll; do not auto-transition here.
+        refState.waitingTimer = Math.max(0, refState.waitingTimer - deltaTime);
         drawPlane(0, h, -0.06);
-
-        if (refState.waitingTimer <= 0) {
-          startFlyingRound();
-        }
-      } 
+      }
       else if (refState.gameState === "FLYING") {
         refState.timeElapsed += deltaTime;
         const tSec = refState.timeElapsed / 1000;
-        const mult = Math.round((1.00 + 0.06 * Math.pow(tSec, 1.4)) * 100) / 100;
-        
+        // Same formula as the server (aviatorMultiplierAt): 1.075^(t*1.8)
+        const mult = Math.round(Math.pow(1.075, tSec * 1.8) * 100) / 100;
+
         refState.currentMultiplier = mult;
         setCurrentMultiplier(mult);
         audioRef.current.updateEnginePitch(mult);
@@ -703,7 +698,7 @@ const AviatorFunGame = () => {
         const startY = h;
         const maxFlightX = w * 0.72;
         const maxFlightY = h * 0.35;
-        
+
         let planeX = startX + (maxFlightX - startX) * progress;
         let planeY = startY - (startY - maxFlightY) * Math.pow(progress, 1.5);
         planeY += Math.sin(now * 0.004) * 6;
@@ -717,10 +712,9 @@ const AviatorFunGame = () => {
         drawCurve(0, h, planeX, planeY);
         drawPlane(planeX, planeY, angle);
 
-        if (mult >= refState.crashMultiplier) {
-          startCrashedRound(mult);
-        }
-      } 
+        // Crash is signalled by the server sync loop — no local threshold trigger.
+      }
+
       else if (refState.gameState === "CRASHED") {
         refState.timeElapsed += deltaTime;
         const progressAtCrash = Math.min(1.0, (refState.currentMultiplier - 1.0) / 0.50);
