@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, Volume2, VolumeX } from "lucide-react";
 import { useBalanceContext } from "@/contexts/BalanceContext";
 import { type CurrencyType, reportGameResult } from "@/lib/telegram";
+import GameCurrencyChips from "@/components/GameCurrencyChips";
+import { GameCurrencyMode } from "@/lib/gameCurrency";
 import { toast } from "sonner";
 import "./MinesClassicGame.css";
 
