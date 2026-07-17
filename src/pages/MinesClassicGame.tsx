@@ -418,7 +418,7 @@ const MinesClassicGame = () => {
     try {
       await reportGameResult({
         betAmount: 0, // already deducted
-        winAmount: winAmt,
+        winAmount: toNativeAmount(winAmt, currencyMode),
         currency,
         game: "mines_classic"
       });
