@@ -2222,7 +2222,12 @@ setInterval(() => {
 
 // GET /api/aviator/state?currency=dollar|star
 app.get("/api/aviator/state", (req, res) => {
-  const currency = normalizeCurrency(req.query.currency);
+  let currency;
+  try {
+    currency = normalizeCurrency(req.query.currency);
+  } catch {
+    return res.status(400).json({ error: "Invalid currency" });
+  }
   const s = aviatorState[currency];
   const now = Date.now();
   let multiplier = 1;
@@ -2414,7 +2419,12 @@ app.post("/api/aviator/cashout", async (req, res) => {
 
 // GET /api/aviator/my-bet
 app.get("/api/aviator/my-bet", (req, res) => {
-  const curr = normalizeCurrency(req.query.currency);
+  let curr;
+  try {
+    curr = normalizeCurrency(req.query.currency);
+  } catch {
+    return res.status(400).json({ error: "Invalid currency" });
+  }
   const s = aviatorState[curr];
   const numericId = Number(req.query.userId);
   const slots = [1, 2].map((slot) => {
@@ -3008,7 +3018,12 @@ setInterval(() => { jetxSupervisor("dollar"); jetxSupervisor("rupee"); jetxSuper
 
 // GET /api/jetx/state?currency=dollar|star
 app.get("/api/jetx/state", (req, res) => {
-  const currency = normalizeCurrency(req.query.currency);
+  let currency;
+  try {
+    currency = normalizeCurrency(req.query.currency);
+  } catch {
+    return res.status(400).json({ error: "Invalid currency" });
+  }
   const s = jetxState[currency];
   const now = Date.now();
   let multiplier = 1;
@@ -3121,7 +3136,12 @@ app.post("/api/jetx/cashout", async (req, res) => {
 
 // GET /api/jetx/my-bet?userId=&currency=
 app.get("/api/jetx/my-bet", (req, res) => {
-  const curr = normalizeCurrency(req.query.currency);
+  let curr;
+  try {
+    curr = normalizeCurrency(req.query.currency);
+  } catch {
+    return res.status(400).json({ error: "Invalid currency" });
+  }
   const s = jetxState[curr];
   const key = String(Number(req.query.userId));
   const b = s.bets[key];
