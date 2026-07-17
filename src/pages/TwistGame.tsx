@@ -1285,7 +1285,7 @@ const TwistGame = () => {
 
       {/* Footer Info */}
       <div className="footer-bar">
-        Last Win: <span id="lastWinDisplay">{lastWin ? (currency === "dollar" ? `$${lastWin.toFixed(2)}` : `★${lastWin}`) : "-"}</span>
+        Last Win: <span id="lastWinDisplay">{lastWin ? (currencyMode === "STAR" ? `★${lastWin}` : `${currencySymbol(currencyMode)}${lastWin.toFixed(2)}`) : "-"}</span>
       </div>
 
       {/* Settings Drawer */}
