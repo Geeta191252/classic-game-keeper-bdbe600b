@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
-import { type CurrencyType, reportGameResult } from "@/lib/telegram";
+import { type CurrencyType, reportGameResult, fetchAviatorState } from "@/lib/telegram";
+
+// Small seeded PRNG so all clients render the same simulated players per round
+const mulberry32 = (seed: number) => {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import "./AviatorFunGame.css";
@@ -339,18 +351,20 @@ const AviatorFunGame = () => {
     setActiveModal(null);
   };
 
-  // Generate simulated players
+  // Generate simulated players — seeded by roundNumber so every user sees the same list
+  const roundSeedRef = useRef(1);
   const generateSimulatedPlayers = () => {
+    const rand = mulberry32(roundSeedRef.current * 9301 + (currency === "star" ? 1 : 2));
     const list: SimulatedPlayer[] = [];
-    const numPlayers = Math.floor(Math.random() * 40) + 90;
+    const numPlayers = Math.floor(rand() * 40) + 90;
     for (let i = 0; i < numPlayers; i++) {
-      const name = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)] + Math.floor(Math.random() * 900 + 100);
-      const betAmt = Math.floor(Math.random() * (currency === "dollar" ? 10 : 100)) + (currency === "dollar" ? 1 : 10);
-      
-      const r = Math.random();
-      let target = 1.05 + Math.random() * 0.2;
-      if (r > 0.3) target = 1.25 + Math.pow(Math.random(), 2) * 4.0;
-      if (r > 0.8) target = 5.0 + Math.pow(Math.random(), 3) * 35.0;
+      const name = FIRST_NAMES[Math.floor(rand() * FIRST_NAMES.length)] + Math.floor(rand() * 900 + 100);
+      const betAmt = Math.floor(rand() * (currency === "dollar" ? 10 : 100)) + (currency === "dollar" ? 1 : 10);
+
+      const r = rand();
+      let target = 1.05 + rand() * 0.2;
+      if (r > 0.3) target = 1.25 + Math.pow(rand(), 2) * 4.0;
+      if (r > 0.8) target = 5.0 + Math.pow(rand(), 3) * 35.0;
 
       list.push({
         name,
@@ -358,22 +372,12 @@ const AviatorFunGame = () => {
         targetMultiplier: Math.round(target * 100) / 100,
         cashedOut: false,
         winAmount: 0,
-        avatarIdx: Math.floor(Math.random() * AVATAR_GRADIENTS.length)
+        avatarIdx: Math.floor(rand() * AVATAR_GRADIENTS.length)
       });
     }
     return list;
   };
 
-  // Generate random crash multipliers
-  const generateCrashMultiplier = () => {
-    const r = Math.random();
-    if (r < 0.05) return 1.00; // instant crash
-    
-    // Spribe distribution
-    const raw = 0.98 / (1.0 - Math.random() * 0.96);
-    const finalMult = Math.floor(Math.max(1.01, raw) * 100) / 100;
-    return Math.min(1000.00, finalMult);
-  };
 
   // Game Round Control
   const startWaitingRound = useCallback(() => {
@@ -416,14 +420,9 @@ const AviatorFunGame = () => {
   }, [currency]);
 
   const startFlyingRound = useCallback(() => {
-    // Read pre-fetched rigging state synchronously
-    const isRigged = isRiggedRef.current;
-
-    let crashVal = generateCrashMultiplier();
-    if (isRigged) {
-      // Force crash immediately
-      crashVal = Number((1.00 + Math.random() * 0.05).toFixed(2));
-    }
+    // Crash multiplier comes from the server; use a large sentinel so the local
+    // render loop never triggers the crash on its own — we wait for the server signal.
+    const crashVal = 999999;
 
     setCrashMultiplier(crashVal);
     setGameState("FLYING");
@@ -454,6 +453,8 @@ const AviatorFunGame = () => {
 
     stateRef.current.gameState = "CRASHED";
     stateRef.current.timeElapsed = 0; // Reset timer for smooth fly-away animation
+    stateRef.current.currentMultiplier = finalMult;
+    setCurrentMultiplier(finalMult);
 
     // Un-cashed user bets are lost
     setPanel1(prev => {
@@ -466,11 +467,66 @@ const AviatorFunGame = () => {
     });
 
     setHistoryList(prev => [finalMult, ...prev.slice(0, 39)]);
+    // Server drives the next WAITING transition — no local setTimeout here.
+  }, []);
 
-    setTimeout(() => {
-      startWaitingRound();
-    }, 3000);
-  }, [startWaitingRound]);
+  // ---------------------------------------------------------------------------
+  // Server-synced rounds: drive phase transitions from the shared aviator state
+  // so every user sees the same round, crash and countdown at the same time.
+  // ---------------------------------------------------------------------------
+  const serverSyncRef = useRef({ phase: "" as string, roundNumber: 0 });
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = async () => {
+      try {
+        const s = await fetchAviatorState(currency);
+        if (cancelled) return;
+
+        const prev = serverSyncRef.current;
+        const phaseChanged = prev.phase !== s.phase;
+        const roundChanged = prev.roundNumber !== s.roundNumber;
+        serverSyncRef.current = { phase: s.phase, roundNumber: s.roundNumber };
+        roundSeedRef.current = s.roundNumber || 1;
+
+        if (s.phase === "betting") {
+          stateRef.current.waitingTimer = Math.max(0, s.timeLeft * 1000);
+          setWaitingCountdown(s.timeLeft);
+          if (phaseChanged || roundChanged) {
+            startWaitingRound();
+          }
+        } else if (s.phase === "flying") {
+          if (phaseChanged) startFlyingRound();
+          // Sync local elapsed time to server-reported multiplier
+          const m = Math.max(1.0001, s.multiplier);
+          const elapsedMs = (Math.log(m) / Math.log(1.075) / 1.8) * 1000;
+          stateRef.current.timeElapsed = elapsedMs;
+          stateRef.current.currentMultiplier = m;
+          setCurrentMultiplier(Number(m.toFixed(2)));
+        } else if (s.phase === "crashed") {
+          if (phaseChanged) {
+            const finalMult = s.crashAt ?? s.multiplier ?? stateRef.current.currentMultiplier;
+            startCrashedRound(Number(finalMult));
+          }
+        }
+
+        if (Array.isArray(s.history) && s.history.length) {
+          setHistoryList(s.history.slice(0, 40));
+        }
+      } catch {
+        // network hiccup — retry
+      }
+      if (!cancelled) timer = setTimeout(tick, 500);
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [currency, startWaitingRound, startFlyingRound, startCrashedRound]);
+
 
   // Main Canvas Render loop
   useEffect(() => {
@@ -599,21 +655,16 @@ const AviatorFunGame = () => {
       const refState = stateRef.current;
 
       if (refState.gameState === "WAITING") {
-        refState.waitingTimer -= deltaTime;
-        const remaining = Math.max(0, refState.waitingTimer / 1000);
-        setWaitingCountdown(remaining);
-        
+        // Countdown display is driven by the server poll; do not auto-transition here.
+        refState.waitingTimer = Math.max(0, refState.waitingTimer - deltaTime);
         drawPlane(0, h, -0.06);
-
-        if (refState.waitingTimer <= 0) {
-          startFlyingRound();
-        }
-      } 
+      }
       else if (refState.gameState === "FLYING") {
         refState.timeElapsed += deltaTime;
         const tSec = refState.timeElapsed / 1000;
-        const mult = Math.round((1.00 + 0.06 * Math.pow(tSec, 1.4)) * 100) / 100;
-        
+        // Same formula as the server (aviatorMultiplierAt): 1.075^(t*1.8)
+        const mult = Math.round(Math.pow(1.075, tSec * 1.8) * 100) / 100;
+
         refState.currentMultiplier = mult;
         setCurrentMultiplier(mult);
         audioRef.current.updateEnginePitch(mult);
@@ -647,7 +698,7 @@ const AviatorFunGame = () => {
         const startY = h;
         const maxFlightX = w * 0.72;
         const maxFlightY = h * 0.35;
-        
+
         let planeX = startX + (maxFlightX - startX) * progress;
         let planeY = startY - (startY - maxFlightY) * Math.pow(progress, 1.5);
         planeY += Math.sin(now * 0.004) * 6;
@@ -661,10 +712,9 @@ const AviatorFunGame = () => {
         drawCurve(0, h, planeX, planeY);
         drawPlane(planeX, planeY, angle);
 
-        if (mult >= refState.crashMultiplier) {
-          startCrashedRound(mult);
-        }
-      } 
+        // Crash is signalled by the server sync loop — no local threshold trigger.
+      }
+
       else if (refState.gameState === "CRASHED") {
         refState.timeElapsed += deltaTime;
         const progressAtCrash = Math.min(1.0, (refState.currentMultiplier - 1.0) / 0.50);
