@@ -207,6 +207,7 @@ const App = () => {
                     <Route path="profile" element={<AdminPages.Profile />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
+                </Routes>
               </Suspense>
             </BrowserRouter>
           </TooltipProvider>
