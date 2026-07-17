@@ -174,7 +174,7 @@ const ChickenRoadGame = () => {
   const nextMultiplier =
     currentLane < cfg.multipliers.length ? cfg.multipliers[currentLane] : cfg.multipliers[cfg.multipliers.length - 1];
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback(async () => {
     if (currentBalance < selectedBet) {
       toast({
         title: "Insufficient balance",
@@ -185,9 +185,27 @@ const ChickenRoadGame = () => {
       });
       return;
     }
-    if (activeWallet === "dollar") setLocalDollarAdj((p) => p - nBet(selectedBet));
-    else if (activeWallet === "rupee") setLocalRupeeAdj((p) => p - nBet(selectedBet));
-    else setLocalStarAdj((p) => p - nBet(selectedBet));
+    const nativeBet = nBet(selectedBet);
+    if (activeWallet === "dollar") setLocalDollarAdj((p) => p - nativeBet);
+    else if (activeWallet === "rupee") setLocalRupeeAdj((p) => p - nativeBet);
+    else setLocalStarAdj((p) => p - nativeBet);
+
+    try {
+      await reportGameResult({
+        betAmount: nativeBet,
+        winAmount: 0,
+        currency: activeWallet,
+        game: "chickenroad",
+      });
+      refreshBalance();
+    } catch (e) {
+      if (activeWallet === "dollar") setLocalDollarAdj((p) => p + nativeBet);
+      else if (activeWallet === "rupee") setLocalRupeeAdj((p) => p + nativeBet);
+      else setLocalStarAdj((p) => p + nativeBet);
+      console.error(e);
+      return;
+    }
+
     if (soundRef.current) playBetSound();
 
     // ===== RIG: record this bet =====
@@ -200,7 +218,7 @@ const ChickenRoadGame = () => {
     setCarLane(null);
     setWinAmount(0);
     setPhase("playing");
-  }, [currentBalance, selectedBet, activeWallet]);
+  }, [currentBalance, selectedBet, activeWallet, currencyMode, refreshBalance]);
 
   const finalizeLoss = useCallback((crashLane: number) => {
     const s = readRig(activeWallet);
@@ -212,19 +230,10 @@ const ChickenRoadGame = () => {
     setCarLane(crashLane);
     setPhase("lost");
     if (soundRef.current) playLoseSound();
-    reportGameResult({
-      betAmount: nBet(selectedBet),
-      winAmount: 0,
-      currency: activeWallet,
-      game: "chickenroad",
-    })
-      .then(() => {
-        setLocalDollarAdj(0);
-        setLocalRupeeAdj(0);
-        setLocalStarAdj(0);
-        refreshBalance();
-      })
-      .catch(console.error);
+    setLocalDollarAdj(0);
+    setLocalRupeeAdj(0);
+    setLocalStarAdj(0);
+    refreshBalance();
   }, [selectedBet, activeWallet, refreshBalance]);
 
   const finalizeWin = useCallback((prize: number) => {
@@ -238,7 +247,7 @@ const ChickenRoadGame = () => {
     s.winStreak += 1;
     writeRig(activeWallet, s);
     reportGameResult({
-      betAmount: nBet(selectedBet),
+      betAmount: 0,
       winAmount: nBet(prize),
       currency: activeWallet,
       game: "chickenroad",
