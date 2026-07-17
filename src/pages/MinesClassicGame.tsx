@@ -210,8 +210,9 @@ const MinesClassicGame = () => {
 
   // Sync bet amount placeholder on currency changes
   useEffect(() => {
-    setBetInputStr(currency === "dollar" ? "1.00" : "100");
-  }, [currency]);
+    setBetInputStr(currencyMode === "USD" ? "1.00" : "100");
+  }, [currencyMode]);
+
 
 
 
