@@ -18,6 +18,7 @@ const GROUPS: Group[] = [
       { to: "/admin/dashboard", label: "Dashboard", icon: Activity },
       { to: "/admin/users", label: "Users", icon: Users },
       { to: "/admin/games", label: "Games", icon: Gamepad2 },
+      { to: "/admin/aviator-fun", label: "Aviator Fun", icon: Plane },
     ],
   },
   {
