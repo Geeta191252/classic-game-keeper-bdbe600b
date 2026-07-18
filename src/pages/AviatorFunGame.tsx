@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBalanceContext } from "@/contexts/BalanceContext";
-import { type CurrencyType, reportGameResult, fetchAviatorState, getTelegramUser } from "@/lib/telegram";
+import { type CurrencyType, reportGameResult, fetchAviatorFunState, getTelegramUser } from "@/lib/telegram";
 import { GameCurrencyMode, currencySymbol, modeToWallet } from "@/lib/gameCurrency";
 
 type ServerBet = { user: string; amount: number; multiplier: number | null; cashout: number | null };
@@ -492,7 +492,7 @@ const AviatorFunGame = () => {
 
     const tick = async () => {
       try {
-        const s = await fetchAviatorState(currency);
+        const s = await fetchAviatorFunState(currency);
         if (cancelled) return;
 
         const prev = serverSyncRef.current;
@@ -794,7 +794,7 @@ const AviatorFunGame = () => {
         betAmount: toBackendAmount(panel.amount),
         winAmount: 0,
         currency,
-        game: "aviator"
+        game: "aviator-fun"
       });
       refreshBalance();
     } catch (e) {
@@ -820,7 +820,7 @@ const AviatorFunGame = () => {
         betAmount: 0,
         winAmount: toBackendAmount(panel.amount),
         currency,
-        game: "aviator"
+        game: "aviator-fun"
       });
       refreshBalance();
     } catch (e) {
@@ -849,7 +849,7 @@ const AviatorFunGame = () => {
         betAmount: 0,
         winAmount: toBackendAmount(winAmt),
         currency,
-        game: "aviator"
+        game: "aviator-fun"
       });
       refreshBalance();
     } catch (e) {

@@ -200,3 +200,82 @@ export const saveUpiConfig = (cfg: UpiConfig) =>
     body: JSON.stringify(cfg),
   });
 
+
+// ---------- Aviator Fun Controls ----------
+export type AviatorFunCurrency = "dollar" | "rupee" | "star";
+
+export interface AviatorFunPoolOverview {
+  roundNumber: number;
+  phase: "betting" | "flying" | "crashed";
+  multiplier: number;
+  timeLeft: number;
+  totalPool: number;
+  totalPaidOut: number;
+  cumPool: number;
+  cumPaid: number;
+  houseNet: number;
+  totalPlayers: number;
+  manualQueue: number[];
+  manualOverride: boolean;
+  crashAt: number | null;
+  history: number[];
+  bets: Array<{
+    key: string;
+    userId: number;
+    firstName?: string;
+    amount: number;
+    slot: number;
+    cashedOutAt: number | null;
+    winAmount: number;
+  }>;
+}
+export interface AviatorFunOverview {
+  overview: Record<AviatorFunCurrency, AviatorFunPoolOverview>;
+}
+
+export const getAviatorFunOverview = () =>
+  adminFetch<AviatorFunOverview>("/admin/aviator-fun/overview");
+
+export const getAviatorFunProfit = () =>
+  adminFetch<{ percent: number }>("/admin/aviator-fun/profit");
+
+export const setAviatorFunProfit = (percent: number) =>
+  adminFetch<{ success: true; percent: number }>("/admin/aviator-fun/profit", {
+    method: "POST",
+    body: JSON.stringify({ percent }),
+  });
+
+export const getAviatorFunManual = (currency: AviatorFunCurrency) =>
+  adminFetch<{ currency: string; queue: number[]; active: boolean; currentCrashAt: number }>(
+    `/admin/aviator-fun/manual?currency=${currency}`
+  );
+
+export const addAviatorFunManual = (currency: AviatorFunCurrency, value: number) =>
+  adminFetch<{ success: true; queue: number[] }>("/admin/aviator-fun/manual/add", {
+    method: "POST",
+    body: JSON.stringify({ currency, value }),
+  });
+
+export const removeAviatorFunManual = (currency: AviatorFunCurrency, index: number) =>
+  adminFetch<{ success: true; queue: number[] }>("/admin/aviator-fun/manual/remove", {
+    method: "POST",
+    body: JSON.stringify({ currency, index }),
+  });
+
+export const clearAviatorFunManual = (currency: AviatorFunCurrency) =>
+  adminFetch<{ success: true }>("/admin/aviator-fun/manual/clear", {
+    method: "POST",
+    body: JSON.stringify({ currency }),
+  });
+
+export const forceCrashAviatorFun = (currency: AviatorFunCurrency) =>
+  adminFetch<{ success: true; crashAt: number }>("/admin/aviator-fun/force-crash", {
+    method: "POST",
+    body: JSON.stringify({ currency }),
+  });
+
+export const resetAviatorFunLedger = (currency: AviatorFunCurrency) =>
+  adminFetch<{ success: true }>("/admin/aviator-fun/reset-ledger", {
+    method: "POST",
+    body: JSON.stringify({ currency }),
+  });

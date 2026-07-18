@@ -1681,3 +1681,248 @@ export function WithdrawLimitPage() {
     </div>
   );
 }
+
+/* ============= Aviator Fun Control ============= */
+import {
+  getAviatorFunOverview, getAviatorFunProfit, setAviatorFunProfit,
+  addAviatorFunManual, removeAviatorFunManual, clearAviatorFunManual,
+  forceCrashAviatorFun, resetAviatorFunLedger,
+  type AviatorFunOverview, type AviatorFunCurrency, type AviatorFunPoolOverview,
+} from "@/lib/adminApi";
+import { Plane, Zap, RotateCcw, Trash2, Plus } from "lucide-react";
+
+const CURRENCIES: Array<{ key: AviatorFunCurrency; label: string; symbol: string }> = [
+  { key: "dollar", label: "USD", symbol: "$" },
+  { key: "rupee", label: "INR", symbol: "₹" },
+  { key: "star", label: "STAR", symbol: "★" },
+];
+
+function PhaseBadge({ phase }: { phase: string }) {
+  const color = phase === "flying" ? "#33d69f" : phase === "crashed" ? "#ff6b6b" : "#4aa8ff";
+  return (
+    <span className="a-chip" style={{ background: `color-mix(in oklab, ${color} 20%, transparent)`, color, borderColor: color }}>
+      {phase.toUpperCase()}
+    </span>
+  );
+}
+
+function AviatorFunPoolCard({
+  currencyKey, symbol, label, pool, onAdd, onRemove, onClear, onForce, onReset,
+}: {
+  currencyKey: AviatorFunCurrency; symbol: string; label: string; pool: AviatorFunPoolOverview;
+  onAdd: (v: number) => void; onRemove: (i: number) => void; onClear: () => void;
+  onForce: () => void; onReset: () => void;
+}) {
+  const [newVal, setNewVal] = useState("");
+  return (
+    <div className="a-card">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-wider" style={{ color: "var(--a-text-mute)" }}>{label} pool</div>
+          <div className="text-white font-bold text-[18px] flex items-center gap-2 mt-0.5">
+            Round #{pool.roundNumber} <PhaseBadge phase={pool.phase} />
+            {pool.manualOverride && <span className="a-chip" style={{ background: "rgba(255,193,7,0.15)", color: "#ffc107", borderColor: "#ffc107" }}>MANUAL</span>}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px]" style={{ color: "var(--a-text-mute)" }}>MULTIPLIER</div>
+          <div className="text-[22px] font-bold" style={{ color: pool.phase === "crashed" ? "#ff6b6b" : "#33d69f" }}>
+            {pool.multiplier.toFixed(2)}x
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 mb-3 text-center">
+        <div className="rounded-lg p-2" style={{ background: "rgba(10,15,26,0.5)" }}>
+          <div className="text-[10px]" style={{ color: "var(--a-text-mute)" }}>Round Pool</div>
+          <div className="text-white font-semibold text-[13px]">{symbol}{pool.totalPool.toFixed(2)}</div>
+        </div>
+        <div className="rounded-lg p-2" style={{ background: "rgba(10,15,26,0.5)" }}>
+          <div className="text-[10px]" style={{ color: "var(--a-text-mute)" }}>Paid Out</div>
+          <div className="text-white font-semibold text-[13px]">{symbol}{pool.totalPaidOut.toFixed(2)}</div>
+        </div>
+        <div className="rounded-lg p-2" style={{ background: "rgba(10,15,26,0.5)" }}>
+          <div className="text-[10px]" style={{ color: "var(--a-text-mute)" }}>Cum Pool</div>
+          <div className="text-white font-semibold text-[13px]">{symbol}{pool.cumPool.toFixed(2)}</div>
+        </div>
+        <div className="rounded-lg p-2" style={{ background: "rgba(10,15,26,0.5)" }}>
+          <div className="text-[10px]" style={{ color: "var(--a-text-mute)" }}>House Net</div>
+          <div className="font-semibold text-[13px]" style={{ color: pool.houseNet >= 0 ? "#33d69f" : "#ff6b6b" }}>
+            {symbol}{pool.houseNet.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <div className="a-label mb-1">Manual crash queue (next: {pool.manualQueue[0] ? `${pool.manualQueue[0]}x` : "—"})</div>
+        <div className="flex gap-2 mb-2">
+          <input className="a-input flex-1" placeholder="e.g. 1.50" value={newVal}
+                 onChange={(e) => setNewVal(e.target.value)} />
+          <button className="a-btn" style={{ background: "#4aa8ff", color: "#04070d" }}
+                  onClick={() => { const n = Number(newVal); if (n > 0) { onAdd(n); setNewVal(""); } }}>
+            <Plus size={14} /> Add
+          </button>
+          <button className="a-btn" style={{ background: "rgba(255,107,107,0.15)", color: "#ff6b6b", border: "1px solid #ff6b6b" }}
+                  onClick={onClear} disabled={!pool.manualQueue.length}>
+            <Trash2 size={14} /> Clear
+          </button>
+        </div>
+        {pool.manualQueue.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {pool.manualQueue.map((v, i) => (
+              <button key={i} onClick={() => onRemove(i)} className="a-chip" title="Click to remove"
+                      style={{ background: "rgba(74,168,255,0.15)", color: "#4aa8ff", borderColor: "#4aa8ff" }}>
+                {i + 1}. {v}x ×
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 mb-3">
+        <button className="a-btn flex-1" style={{ background: "rgba(255,193,7,0.15)", color: "#ffc107", border: "1px solid #ffc107" }}
+                onClick={onForce} disabled={pool.phase !== "flying"} title="Crash the current flying round now">
+          <Zap size={14} /> Force Crash
+        </button>
+        <button className="a-btn flex-1" style={{ background: "rgba(180,180,180,0.15)", color: "var(--a-text-mute)", border: "1px solid var(--a-border-strong)" }}
+                onClick={onReset} title="Reset cumulative ledger for this pool">
+          <RotateCcw size={14} /> Reset Ledger
+        </button>
+      </div>
+
+      <div className="mb-2">
+        <div className="a-label mb-1">History (latest {pool.history.length})</div>
+        <div className="flex flex-wrap gap-1">
+          {pool.history.map((h, i) => (
+            <span key={i} className="a-chip"
+                  style={{ background: h >= 2 ? "rgba(51,214,159,0.15)" : "rgba(255,107,107,0.15)",
+                           color: h >= 2 ? "#33d69f" : "#ff6b6b", borderColor: h >= 2 ? "#33d69f" : "#ff6b6b" }}>
+              {h.toFixed(2)}x
+            </span>
+          ))}
+          {!pool.history.length && <span className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>No rounds yet.</span>}
+        </div>
+      </div>
+
+      <div>
+        <div className="a-label mb-1">Live bets ({pool.totalPlayers})</div>
+        <div className="rounded-lg overflow-hidden" style={{ background: "rgba(10,15,26,0.5)", border: "1px solid var(--a-border)" }}>
+          {pool.bets.length === 0 && (
+            <div className="p-3 text-[12px]" style={{ color: "var(--a-text-mute)" }}>No active bets.</div>
+          )}
+          {pool.bets.map((b) => (
+            <div key={b.key} className="flex items-center justify-between px-3 py-2 border-b"
+                 style={{ borderColor: "var(--a-border)" }}>
+              <div className="text-[12px] text-white">
+                <span className="font-semibold">{b.firstName || "Player"}</span>
+                <span style={{ color: "var(--a-text-mute)" }}> · #{b.userId} · slot {b.slot}</span>
+              </div>
+              <div className="text-[12px] font-semibold text-white">
+                {symbol}{b.amount.toFixed(2)}
+                {b.cashedOutAt ? (
+                  <span style={{ color: "#33d69f" }}> → {b.cashedOutAt}x = {symbol}{b.winAmount.toFixed(2)}</span>
+                ) : (
+                  <span style={{ color: "var(--a-text-mute)" }}> · flying</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AviatorFunControlPage() {
+  const [overview, setOverview] = useState<AviatorFunOverview["overview"] | null>(null);
+  const [profit, setProfit] = useState<number>(50);
+  const [profitInput, setProfitInput] = useState<string>("50");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      const [ov, pf] = await Promise.all([getAviatorFunOverview(), getAviatorFunProfit()]);
+      setOverview(ov.overview);
+      setProfit(pf.percent);
+      setProfitInput(String(pf.percent));
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || "Failed to load");
+    }
+  };
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 1500);
+    return () => clearInterval(t);
+  }, []);
+
+  const saveProfit = async () => {
+    const n = Number(profitInput);
+    if (isNaN(n) || n < 0 || n > 95) { setError("Profit must be 0-95"); return; }
+    setSaving(true);
+    try {
+      await setAviatorFunProfit(n);
+      setProfit(n);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <PageHeader icon={<Plane size={18} />} title="Aviator Fun Control"
+        subtitle="Independent from real Aviator. Manage house edge, force crashes, and preview live rounds across all three currency pools."
+        tone="teal"
+        right={<button className="a-btn" onClick={load}><RefreshCw size={14}/> Refresh</button>} />
+
+      {error && (
+        <div className="a-card mb-4" style={{ borderColor: "#ff6b6b" }}>
+          <div className="text-[13px]" style={{ color: "#ff6b6b" }}>{error}</div>
+        </div>
+      )}
+
+      <div className="a-card mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="text-white font-bold text-[16px]">House profit target</div>
+            <div className="text-[12px]" style={{ color: "var(--a-text-mute)" }}>
+              Currently <span className="text-white font-semibold">{profit}%</span>. Applies to all new rounds across every currency pool.
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input className="a-input w-24 text-center" value={profitInput}
+                   onChange={(e) => setProfitInput(e.target.value)} />
+            <span className="text-white">%</span>
+            <button className="a-btn" style={{ background: "#33d69f", color: "#04070d" }}
+                    onClick={saveProfit} disabled={saving}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : null} Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {!overview ? (
+        <div className="a-card"><Loader2 className="animate-spin" size={16} /></div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          {CURRENCIES.map((c) => (
+            <AviatorFunPoolCard
+              key={c.key} currencyKey={c.key} symbol={c.symbol} label={c.label}
+              pool={overview[c.key]}
+              onAdd={async (v) => { await addAviatorFunManual(c.key, v); load(); }}
+              onRemove={async (i) => { await removeAviatorFunManual(c.key, i); load(); }}
+              onClear={async () => { await clearAviatorFunManual(c.key); load(); }}
+              onForce={async () => { await forceCrashAviatorFun(c.key); load(); }}
+              onReset={async () => { if (confirm("Reset cumulative ledger for " + c.label + " pool?")) { await resetAviatorFunLedger(c.key); load(); } }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

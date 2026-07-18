@@ -3864,6 +3864,24 @@ app.post("/api/admin/upi/config", requireAdmin, async (req, res) => {
 
 
 // ============================================
+// Aviator Fun — independent game with its own admin controls
+// ============================================
+try {
+  const { mountAviatorFun } = require("./aviatorFun");
+  mountAviatorFun(app, {
+    normalizeCurrency,
+    getCurrencyFields,
+    getOrCreateUser,
+    balancePayload,
+    requireAdmin,
+  });
+  console.log("✅ Aviator Fun mounted");
+} catch (err) {
+  console.error("❌ Failed to mount Aviator Fun:", err);
+}
+
+
+// ============================================
 // Start server
 // ============================================
 app.listen(PORT, () => {
