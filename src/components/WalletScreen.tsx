@@ -406,8 +406,9 @@ const WalletScreen = () => {
 
   const handleCryptoDeposit = async () => {
     const usdAmt = Number(cryptoAmount);
-    if (!usdAmt || usdAmt < 1) {
-      toast({ title: "Invalid amount", description: "Please enter a valid USD amount.", variant: "destructive" });
+    const minReq = cryptoMins[cryptoCurrency] || 1;
+    if (!usdAmt || usdAmt < minReq) {
+      toast({ title: "Amount too low", description: `Minimum deposit for ${cryptoCurrency.toUpperCase()} is $${minReq}.`, variant: "destructive" });
       return;
     }
 
