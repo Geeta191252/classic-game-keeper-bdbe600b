@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowDownLeft, ArrowUpRight, DollarSign, IndianRupee, Star, ArrowRightLeft, Wallet, Unplug, Coins, ExternalLink, X, Clock, Smartphone } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, DollarSign, IndianRupee, Star, ArrowRightLeft, Wallet, Unplug, Coins, ExternalLink, X, Clock, Smartphone, ArrowLeft } from "lucide-react";
 import { useTonConnectUI, useTonWallet, useTonAddress } from "@tonconnect/ui-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
