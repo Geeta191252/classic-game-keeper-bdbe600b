@@ -187,9 +187,9 @@ export function Dashboard() {
 
 function Kv({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between">
-      <span style={{ color: "var(--a-text-mute)" }}>{label}</span>
-      <span className="text-white font-semibold">{value}</span>
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-[11px] uppercase tracking-wide truncate" style={{ color: "var(--a-text-mute)" }}>{label}</span>
+      <span className="text-white font-semibold text-[14px] tabular-nums truncate" title={value}>{value}</span>
     </div>
   );
 }
