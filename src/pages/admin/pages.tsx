@@ -321,9 +321,9 @@ export function UsersPage() {
 /* ============= Deposits / Withdrawals shared ============= */
 
 function TxFilterPage({
-  type, title, allowActions,
-}: { type: "deposit" | "withdraw"; title: string; allowActions?: boolean }) {
-  const [status, setStatus] = useState<string>("");
+  type, title,
+}: { type: "deposit" | "withdraw"; title: string }) {
+  const [status, setStatus] = useState<string>("pending");
   const [items, setItems] = useState<AdminTx[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -339,23 +339,32 @@ function TxFilterPage({
   useEffect(load, [status]);
 
   const approve = async (id: string) => {
+    if (!confirm(`Approve this ${type}?`)) return;
     setBusy(id);
-    try { await approveWithdrawal(id); load(); }
-    catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    try {
+      if (type === "withdraw") await approveWithdrawal(id);
+      else await approveDeposit(id);
+      load();
+    } catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(null); }
   };
   const reject = async (id: string) => {
     const reason = prompt("Reason for rejection?") || "Rejected by admin";
     setBusy(id);
-    try { await rejectWithdrawal(id, reason); load(); }
-    catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    try {
+      if (type === "withdraw") await rejectWithdrawal(id, reason);
+      else await rejectDeposit(id, reason);
+      load();
+    } catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(null); }
   };
+
+  const colCount = type === "withdraw" ? 7 : 6;
 
   return (
     <Section eyebrow={type.toUpperCase() + "S"} title={title}
       right={<button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /> Refresh</button>}>
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2 mb-3 flex-wrap">
         {["", "pending", "completed", "failed", "refunded"].map((s) => (
           <button key={s || "all"}
             className={`a-btn a-btn-sm ${status === s ? "a-btn-primary" : ""}`}
@@ -372,50 +381,59 @@ function TxFilterPage({
                 <th>Time</th><th>User</th><th>Amount</th><th>Status</th>
                 {type === "withdraw" && <th>Address / Network</th>}
                 <th>Note</th>
-                {allowActions && <th>Actions</th>}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((t) => (
-                <tr key={t._id}>
-                  <td>{fmtDate(t.createdAt)}</td>
-                  <td>#{t.telegramId}</td>
-                  <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
-                  <td>
-                    <span className="a-chip" style={{
-                      background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
-                                  t.status === "pending" ? "rgba(255,196,0,0.14)" :
-                                  "rgba(255,80,80,0.14)",
-                      color: t.status === "completed" ? "var(--a-green)" :
-                             t.status === "pending" ? "var(--a-yellow)" :
-                             "var(--a-red)",
-                    }}>{t.status}</span>
-                  </td>
-                  {type === "withdraw" && (
-                    <td style={{ color: "var(--a-text-dim)" }}>
-                      {t.cryptoAddress ? <span title={t.cryptoAddress}>{t.cryptoAddress.slice(0, 8)}…{t.cryptoAddress.slice(-6)}</span> : "—"}
-                      {t.withdrawalNetwork && <span className="a-chip ml-2">{t.withdrawalNetwork}</span>}
+              {items.map((t) => {
+                const u = txUserLabel(t);
+                return (
+                  <tr key={t._id}>
+                    <td>{fmtDate(t.createdAt)}</td>
+                    <td>
+                      <div className="text-white font-medium">{u.primary}</div>
+                      <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>{u.sub}</div>
+                      {t.user && (
+                        <div className="text-[10px] mt-0.5" style={{ color: "var(--a-text-mute)" }}>
+                          ${Number(t.user.dollarBalance || 0).toFixed(2)} · ₹{Number(t.user.rupeeBalance || 0).toFixed(2)} · ★{Number(t.user.starBalance || 0).toFixed(0)}
+                        </div>
+                      )}
                     </td>
-                  )}
-                  <td style={{ color: "var(--a-text-dim)" }}>{t.description || "—"}</td>
-                  {allowActions && (
+                    <td className="font-semibold">{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
+                    <td>
+                      <span className="a-chip" style={{
+                        background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
+                                    t.status === "pending" ? "rgba(255,196,0,0.14)" :
+                                    "rgba(255,80,80,0.14)",
+                        color: t.status === "completed" ? "var(--a-green)" :
+                               t.status === "pending" ? "var(--a-yellow)" :
+                               "var(--a-red)",
+                      }}>{t.status}</span>
+                    </td>
+                    {type === "withdraw" && (
+                      <td style={{ color: "var(--a-text-dim)" }}>
+                        {t.cryptoAddress ? <span title={t.cryptoAddress}>{t.cryptoAddress.slice(0, 8)}…{t.cryptoAddress.slice(-6)}</span> : "—"}
+                        {t.withdrawalNetwork && <span className="a-chip ml-2">{t.withdrawalNetwork}</span>}
+                      </td>
+                    )}
+                    <td style={{ color: "var(--a-text-dim)" }}>{t.description || "—"}</td>
                     <td>
                       {t.status === "pending" ? (
                         <div className="flex gap-1">
                           <button disabled={busy === t._id} className="a-btn a-btn-sm" onClick={() => approve(t._id)} title="Approve">
-                            <CheckCircle2 size={12} style={{ color: "var(--a-green)" }} />
+                            <CheckCircle2 size={12} style={{ color: "var(--a-green)" }} /> Approve
                           </button>
                           <button disabled={busy === t._id} className="a-btn a-btn-sm" onClick={() => reject(t._id)} title="Reject">
-                            <XCircle size={12} style={{ color: "var(--a-red)" }} />
+                            <XCircle size={12} style={{ color: "var(--a-red)" }} /> Reject
                           </button>
                         </div>
                       ) : <span style={{ color: "var(--a-text-mute)" }}>—</span>}
                     </td>
-                  )}
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
               {items.length === 0 && (
-                <tr><td colSpan={allowActions ? (type === "withdraw" ? 7 : 6) : (type === "withdraw" ? 6 : 5)}
+                <tr><td colSpan={colCount}
                   className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No records.</td></tr>
               )}
             </tbody>
@@ -427,7 +445,7 @@ function TxFilterPage({
 }
 
 export function DepositsPage() { return <TxFilterPage type="deposit" title="Deposits" />; }
-export function WithdrawalsPage() { return <TxFilterPage type="withdraw" title="Withdrawals" allowActions />; }
+export function WithdrawalsPage() { return <TxFilterPage type="withdraw" title="Withdrawals" />; }
 
 /* ============= Wallet Adjust ============= */
 
