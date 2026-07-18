@@ -189,6 +189,14 @@ const WalletScreen = () => {
     }
   };
 
+  const [limits, setLimits] = useState(defaultLimits);
+  const cryptoMins = limits.crypto.depositMin;
+  const inrDepositMin = limits.inr.depositMin;
+  const inrWithdrawMin = limits.inr.withdrawMin;
+  const starDepositMin = limits.star.depositMin;
+  const starWithdrawMin = limits.star.withdrawMin;
+  const cryptoWithdrawMin = limits.crypto.withdrawMin;
+
   useEffect(() => {
     fetch(`${apiBase}/upi-config`)
       .then(res => {
@@ -201,7 +209,12 @@ const WalletScreen = () => {
         }
       })
       .catch(() => {});
+    fetch(`${apiBase}/limits-config`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data && data.inr) setLimits(data); })
+      .catch(() => {});
   }, []);
+
 
   useEffect(() => {
     if (walletTab === "deposit") setDepositStep("menu");
