@@ -321,6 +321,17 @@ const HomeScreen = () => {
             </span>
           </div>
 
+          {/* Rupee Balance */}
+          <div 
+            onClick={() => setActiveTab(4)}
+            className="flex items-center gap-1 bg-[#090d16] border border-white/[0.02] rounded-xl px-2 py-1.5 cursor-pointer hover:bg-slate-900 transition-all select-none"
+          >
+            <span className="text-[9px]">₹</span>
+            <span className="text-[9px] font-black text-cyan-400">
+              {totalRupee.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+
           {/* Star Balance */}
           <div 
             onClick={() => setActiveTab(4)}
