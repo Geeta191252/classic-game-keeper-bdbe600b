@@ -15,11 +15,29 @@ const STAR_TO_DOLLAR_RATE = 100; // 100 ⭐ = $1
 
 const cryptoApiTicker: Record<string, string> = {
   usdt: "usdttrc20",
+  usdc: "usdcerc20",
 };
 
 const cryptoMins: Record<string, number> = {
-  btc: 18, ltc: 4, ton: 4, sol: 4, trx: 4, doge: 6,
+  btc: 18, eth: 15, ltc: 4, usdt: 5, sol: 4, trx: 4,
+  usdc: 5, xrp: 4, bnb: 5, ada: 4, bch: 4, ton: 4, doge: 6,
 };
+
+type CryptoOption = { id: string; label: string; name: string; color: string; symbol: string };
+const cryptoOptions: CryptoOption[] = [
+  { id: "btc", label: "BTC", name: "Bitcoin", color: "#f7931a", symbol: "₿" },
+  { id: "eth", label: "ETH", name: "Ethereum", color: "#627eea", symbol: "Ξ" },
+  { id: "ltc", label: "LTC", name: "Litecoin", color: "#345d9d", symbol: "Ł" },
+  { id: "usdt", label: "USDT", name: "Tether", color: "#26a17b", symbol: "₮" },
+  { id: "sol", label: "SOL", name: "Solana", color: "#9945ff", symbol: "◎" },
+  { id: "trx", label: "TRX", name: "Tron", color: "#eb0029", symbol: "T" },
+  { id: "usdc", label: "USDC", name: "USD Coin", color: "#2775ca", symbol: "$" },
+  { id: "xrp", label: "XRP", name: "Ripple", color: "#25292e", symbol: "X" },
+  { id: "bnb", label: "BNB", name: "Binance Coin", color: "#f3ba2f", symbol: "◆" },
+  { id: "ada", label: "ADA", name: "Cardano", color: "#0033ad", symbol: "₳" },
+  { id: "bch", label: "BCH", name: "Bitcoin Cash", color: "#0ac18e", symbol: "₿" },
+];
+
 
 type WalletTransaction = {
   type?: string | null;
@@ -724,45 +742,57 @@ const WalletScreen = () => {
               </div>
               <p className="text-[10px] text-[#8e97a4]">Pay with any crypto → Get $ in wallet</p>
 
-              {/* Crypto selector */}
-              <div className="grid grid-cols-6 gap-1">
-                {["btc", "ltc", "ton", "sol", "trx", "doge"].map((coin) => (
-                  <button
-                    key={coin}
-                    onClick={() => setCryptoCurrency(coin)}
-                    className={`py-2 rounded-xl text-[9px] font-black transition-colors flex flex-col items-center leading-tight uppercase border ${
-                      cryptoCurrency === coin
-                        ? "bg-[#00a2e8]/15 text-[#00a2e8] border-[#00a2e8]/30"
-                        : "bg-[#0d121f] text-slate-400 border-white/[0.01]"
-                    }`}
-                  >
-                    <span>{coin.toUpperCase()}</span>
-                    <span className="text-[7px] font-normal opacity-75 mt-0.5">${cryptoMins[coin] || 1}m</span>
-                  </button>
-                ))}
+              {/* Crypto grid — full page style */}
+              <div className="grid grid-cols-3 gap-2">
+                {cryptoOptions.map((coin) => {
+                  const active = cryptoCurrency === coin.id;
+                  return (
+                    <button
+                      key={coin.id}
+                      onClick={() => setCryptoCurrency(coin.id)}
+                      className={`rounded-2xl p-3 flex flex-col items-start gap-2 transition-all border ${
+                        active
+                          ? "bg-[#00a2e8]/10 border-[#00a2e8]/50 shadow-md shadow-[#00a2e8]/10"
+                          : "bg-[#0d121f] border-white/[0.04] hover:border-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 w-full">
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                          style={{ background: coin.color }}
+                        >
+                          {coin.symbol}
+                        </div>
+                        <span className="text-[13px] font-black text-white tracking-tight">{coin.label}</span>
+                      </div>
+                      <span className="text-[10px] text-[#8e97a4] font-medium leading-none">{coin.name}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Amount input */}
-              <div className="flex gap-2">
+              {/* Amount input for selected crypto */}
+              <div className="flex gap-2 pt-1">
                 <div className="flex-1 relative">
                   <Input
                     type="number"
                     placeholder={`USD amount (min $${cryptoMins[cryptoCurrency] || 1})`}
                     value={cryptoAmount}
                     onChange={(e) => setCryptoAmount(e.target.value)}
-                    className="pr-7 rounded-xl bg-[#0d121f] h-9 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
+                    className="pr-7 rounded-xl bg-[#0d121f] h-10 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
                     min={cryptoMins[cryptoCurrency] || 1}
                   />
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8e97a4] font-black">$</span>
                 </div>
                 <button
-                  className="rounded-xl h-9 px-3.5 bg-[#00a2e8] hover:bg-[#0091d0] text-white flex items-center justify-center transition-all disabled:opacity-50"
+                  className="rounded-xl h-10 px-4 bg-[#00a2e8] hover:bg-[#0091d0] text-white text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                   disabled={cryptoProcessing || !cryptoAmount}
                   onClick={handleCryptoDeposit}
                 >
-                  {cryptoProcessing ? "..." : <ExternalLink className="h-3.5 w-3.5" />}
+                  {cryptoProcessing ? "..." : <>Pay <ExternalLink className="h-3 w-3" /></>}
                 </button>
               </div>
+
 
               {/* Payment details shown in-app */}
               <AnimatePresence>
