@@ -3579,7 +3579,14 @@ app.get("/api/admin/transactions-list", requireAdmin, async (req, res) => {
       Transaction.find(q).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Transaction.countDocuments(q),
     ]);
-    res.json({ items, total, limit, skip });
+    // Enrich with user info (username, firstName, lastName, current balances)
+    const ids = [...new Set(items.map((i) => i.telegramId))];
+    const users = await User.find({ telegramId: { $in: ids } })
+      .select("telegramId username firstName lastName dollarBalance rupeeBalance starBalance")
+      .lean();
+    const map = new Map(users.map((u) => [u.telegramId, u]));
+    const enriched = items.map((t) => ({ ...t, user: map.get(t.telegramId) || null }));
+    res.json({ items: enriched, total, limit, skip });
   } catch (e) {
     console.error("admin/transactions-list error:", e);
     res.status(500).json({ error: "Failed to list transactions" });
@@ -3717,6 +3724,93 @@ app.get("/api/admin/game-stats", requireAdmin, async (req, res) => {
   } catch (e) {
     console.error("admin/game-stats error:", e);
     res.status(500).json({ error: "Game stats failed" });
+  }
+});
+
+// POST /api/admin/deposits/approve   { transactionId }
+app.post("/api/admin/deposits/approve", requireAdmin, async (req, res) => {
+  try {
+    const { transactionId } = req.body || {};
+    if (!transactionId) return res.status(400).json({ error: "transactionId required" });
+    const tx = await Transaction.findById(transactionId);
+    if (!tx) return res.status(404).json({ error: "Transaction not found" });
+    if (tx.type !== "deposit") return res.status(400).json({ error: "Not a deposit" });
+    if (tx.status !== "pending") return res.status(400).json({ error: `Already ${tx.status}` });
+    tx.status = "completed";
+    await tx.save();
+    const user = await User.findOne({ telegramId: tx.telegramId });
+    if (user) {
+      const { balanceField } = getCurrencyFields(tx.currency);
+      user[balanceField] = (user[balanceField] || 0) + Math.abs(tx.amount);
+      await user.save();
+      try { await creditReferralOnDeposit(user.telegramId); } catch {}
+    }
+    try {
+      await bot.sendMessage(tx.telegramId,
+        `✅ Deposit approved!\nAmount: ${tx.currency === "rupee" ? "₹" : tx.currency === "star" ? "★" : "$"}${tx.amount}\nCredited to your wallet.`);
+    } catch {}
+    res.json({ success: true, transaction: tx });
+  } catch (e) {
+    console.error("admin/deposit approve error:", e);
+    res.status(500).json({ error: "Approve failed" });
+  }
+});
+
+// POST /api/admin/deposits/reject   { transactionId, reason }
+app.post("/api/admin/deposits/reject", requireAdmin, async (req, res) => {
+  try {
+    const { transactionId, reason } = req.body || {};
+    if (!transactionId) return res.status(400).json({ error: "transactionId required" });
+    const tx = await Transaction.findById(transactionId);
+    if (!tx) return res.status(404).json({ error: "Transaction not found" });
+    if (tx.type !== "deposit") return res.status(400).json({ error: "Not a deposit" });
+    if (tx.status !== "pending") return res.status(400).json({ error: `Already ${tx.status}` });
+    tx.status = "failed";
+    tx.description = reason || tx.description || "Rejected by admin";
+    await tx.save();
+    try {
+      await bot.sendMessage(tx.telegramId,
+        `❌ Deposit rejected.\nReason: ${reason || "Payment could not be verified."}`);
+    } catch {}
+    res.json({ success: true, transaction: tx });
+  } catch (e) {
+    console.error("admin/deposit reject error:", e);
+    res.status(500).json({ error: "Reject failed" });
+  }
+});
+
+// GET /api/admin/game-analytics?game=aviator&days=7 — per-game daily series
+app.get("/api/admin/game-analytics", requireAdmin, async (req, res) => {
+  try {
+    const game = String(req.query.game || "").trim();
+    if (!game) return res.status(400).json({ error: "game required" });
+    const days = Math.min(90, Number(req.query.days) || 7);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await Transaction.aggregate([
+      { $match: { game, createdAt: { $gte: since }, status: "completed", type: { $in: ["bet", "win"] } } },
+      { $group: {
+          _id: {
+            day: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            type: "$type", currency: "$currency",
+          },
+          total: { $sum: "$amount" }, count: { $sum: 1 },
+      } },
+    ]);
+    const byDay = new Map();
+    let totals = { bet: { dollar: 0, rupee: 0, star: 0 }, win: { dollar: 0, rupee: 0, star: 0 }, betCount: 0, winCount: 0 };
+    for (const r of rows) {
+      const d = r._id.day;
+      if (!byDay.has(d)) byDay.set(d, { day: d, bet: { dollar: 0, rupee: 0, star: 0 }, win: { dollar: 0, rupee: 0, star: 0 }, betCount: 0, winCount: 0 });
+      const b = byDay.get(d);
+      b[r._id.type][r._id.currency] = Math.abs(r.total || 0);
+      totals[r._id.type][r._id.currency] += Math.abs(r.total || 0);
+      if (r._id.type === "bet") { b.betCount += r.count; totals.betCount += r.count; }
+      else { b.winCount += r.count; totals.winCount += r.count; }
+    }
+    res.json({ game, days, totals, series: [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)) });
+  } catch (e) {
+    console.error("admin/game-analytics error:", e);
+    res.status(500).json({ error: "Game analytics failed" });
   }
 });
 

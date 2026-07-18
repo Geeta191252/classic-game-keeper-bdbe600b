@@ -7,8 +7,10 @@ import {
 } from "lucide-react";
 import {
   getSummary, listUsers, listTransactions, walletAdjust,
-  approveWithdrawal, rejectWithdrawal, getAnalytics, getGameStats,
-  type AdminSummary, type AdminUser, type AdminTx, type AnalyticsDay, type GameStatRow,
+  approveWithdrawal, rejectWithdrawal, approveDeposit, rejectDeposit,
+  getAnalytics, getGameStats, getGameAnalytics,
+  type AdminSummary, type AdminUser, type AdminTx, type AnalyticsDay,
+  type GameStatRow, type GameAnalytics,
 } from "@/lib/adminApi";
 
 /* ============= Shared primitives ============= */
@@ -193,6 +195,17 @@ function Kv({ label, value }: { label: string; value: string }) {
 
 function symFor(c: string) { return c === "dollar" ? "$" : c === "rupee" ? "₹" : c === "star" ? "★" : ""; }
 
+function txUserLabel(t: AdminTx) {
+  const u = t.user;
+  if (u) {
+    const name = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+    const primary = name || u.username || `User #${t.telegramId}`;
+    const sub = u.username ? `@${u.username}` : `#${t.telegramId}`;
+    return { primary, sub };
+  }
+  return { primary: `User #${t.telegramId}`, sub: `#${t.telegramId}` };
+}
+
 function TxTable({ items }: { items: AdminTx[] }) {
   if (!items.length) return <div className="a-card text-center py-8" style={{ color: "var(--a-text-dim)" }}>No transactions yet.</div>;
   return (
@@ -204,25 +217,31 @@ function TxTable({ items }: { items: AdminTx[] }) {
           </tr>
         </thead>
         <tbody>
-          {items.map((t) => (
-            <tr key={t._id}>
-              <td>{fmtDate(t.createdAt)}</td>
-              <td>#{t.telegramId}</td>
-              <td><span className="a-chip">{t.type}</span></td>
-              <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
-              <td>
-                <span className="a-chip" style={{
-                  background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
-                              t.status === "pending" ? "rgba(255,196,0,0.14)" :
-                              "rgba(255,80,80,0.14)",
-                  color: t.status === "completed" ? "var(--a-green)" :
-                         t.status === "pending" ? "var(--a-yellow)" :
-                         "var(--a-red)",
-                }}>{t.status}</span>
-              </td>
-              <td style={{ color: "var(--a-text-dim)" }}>{t.game || t.description || "—"}</td>
-            </tr>
-          ))}
+          {items.map((t) => {
+            const u = txUserLabel(t);
+            return (
+              <tr key={t._id}>
+                <td>{fmtDate(t.createdAt)}</td>
+                <td>
+                  <div className="text-white font-medium">{u.primary}</div>
+                  <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>{u.sub}</div>
+                </td>
+                <td><span className="a-chip">{t.type}</span></td>
+                <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
+                <td>
+                  <span className="a-chip" style={{
+                    background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
+                                t.status === "pending" ? "rgba(255,196,0,0.14)" :
+                                "rgba(255,80,80,0.14)",
+                    color: t.status === "completed" ? "var(--a-green)" :
+                           t.status === "pending" ? "var(--a-yellow)" :
+                           "var(--a-red)",
+                  }}>{t.status}</span>
+                </td>
+                <td style={{ color: "var(--a-text-dim)" }}>{t.game || t.description || "—"}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -302,9 +321,9 @@ export function UsersPage() {
 /* ============= Deposits / Withdrawals shared ============= */
 
 function TxFilterPage({
-  type, title, allowActions,
-}: { type: "deposit" | "withdraw"; title: string; allowActions?: boolean }) {
-  const [status, setStatus] = useState<string>("");
+  type, title,
+}: { type: "deposit" | "withdraw"; title: string }) {
+  const [status, setStatus] = useState<string>("pending");
   const [items, setItems] = useState<AdminTx[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -320,23 +339,32 @@ function TxFilterPage({
   useEffect(load, [status]);
 
   const approve = async (id: string) => {
+    if (!confirm(`Approve this ${type}?`)) return;
     setBusy(id);
-    try { await approveWithdrawal(id); load(); }
-    catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    try {
+      if (type === "withdraw") await approveWithdrawal(id);
+      else await approveDeposit(id);
+      load();
+    } catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(null); }
   };
   const reject = async (id: string) => {
     const reason = prompt("Reason for rejection?") || "Rejected by admin";
     setBusy(id);
-    try { await rejectWithdrawal(id, reason); load(); }
-    catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
+    try {
+      if (type === "withdraw") await rejectWithdrawal(id, reason);
+      else await rejectDeposit(id, reason);
+      load();
+    } catch (e) { alert(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(null); }
   };
+
+  const colCount = type === "withdraw" ? 7 : 6;
 
   return (
     <Section eyebrow={type.toUpperCase() + "S"} title={title}
       right={<button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /> Refresh</button>}>
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2 mb-3 flex-wrap">
         {["", "pending", "completed", "failed", "refunded"].map((s) => (
           <button key={s || "all"}
             className={`a-btn a-btn-sm ${status === s ? "a-btn-primary" : ""}`}
@@ -353,50 +381,59 @@ function TxFilterPage({
                 <th>Time</th><th>User</th><th>Amount</th><th>Status</th>
                 {type === "withdraw" && <th>Address / Network</th>}
                 <th>Note</th>
-                {allowActions && <th>Actions</th>}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((t) => (
-                <tr key={t._id}>
-                  <td>{fmtDate(t.createdAt)}</td>
-                  <td>#{t.telegramId}</td>
-                  <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
-                  <td>
-                    <span className="a-chip" style={{
-                      background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
-                                  t.status === "pending" ? "rgba(255,196,0,0.14)" :
-                                  "rgba(255,80,80,0.14)",
-                      color: t.status === "completed" ? "var(--a-green)" :
-                             t.status === "pending" ? "var(--a-yellow)" :
-                             "var(--a-red)",
-                    }}>{t.status}</span>
-                  </td>
-                  {type === "withdraw" && (
-                    <td style={{ color: "var(--a-text-dim)" }}>
-                      {t.cryptoAddress ? <span title={t.cryptoAddress}>{t.cryptoAddress.slice(0, 8)}…{t.cryptoAddress.slice(-6)}</span> : "—"}
-                      {t.withdrawalNetwork && <span className="a-chip ml-2">{t.withdrawalNetwork}</span>}
+              {items.map((t) => {
+                const u = txUserLabel(t);
+                return (
+                  <tr key={t._id}>
+                    <td>{fmtDate(t.createdAt)}</td>
+                    <td>
+                      <div className="text-white font-medium">{u.primary}</div>
+                      <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>{u.sub}</div>
+                      {t.user && (
+                        <div className="text-[10px] mt-0.5" style={{ color: "var(--a-text-mute)" }}>
+                          ${Number(t.user.dollarBalance || 0).toFixed(2)} · ₹{Number(t.user.rupeeBalance || 0).toFixed(2)} · ★{Number(t.user.starBalance || 0).toFixed(0)}
+                        </div>
+                      )}
                     </td>
-                  )}
-                  <td style={{ color: "var(--a-text-dim)" }}>{t.description || "—"}</td>
-                  {allowActions && (
+                    <td className="font-semibold">{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
+                    <td>
+                      <span className="a-chip" style={{
+                        background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
+                                    t.status === "pending" ? "rgba(255,196,0,0.14)" :
+                                    "rgba(255,80,80,0.14)",
+                        color: t.status === "completed" ? "var(--a-green)" :
+                               t.status === "pending" ? "var(--a-yellow)" :
+                               "var(--a-red)",
+                      }}>{t.status}</span>
+                    </td>
+                    {type === "withdraw" && (
+                      <td style={{ color: "var(--a-text-dim)" }}>
+                        {t.cryptoAddress ? <span title={t.cryptoAddress}>{t.cryptoAddress.slice(0, 8)}…{t.cryptoAddress.slice(-6)}</span> : "—"}
+                        {t.withdrawalNetwork && <span className="a-chip ml-2">{t.withdrawalNetwork}</span>}
+                      </td>
+                    )}
+                    <td style={{ color: "var(--a-text-dim)" }}>{t.description || "—"}</td>
                     <td>
                       {t.status === "pending" ? (
                         <div className="flex gap-1">
                           <button disabled={busy === t._id} className="a-btn a-btn-sm" onClick={() => approve(t._id)} title="Approve">
-                            <CheckCircle2 size={12} style={{ color: "var(--a-green)" }} />
+                            <CheckCircle2 size={12} style={{ color: "var(--a-green)" }} /> Approve
                           </button>
                           <button disabled={busy === t._id} className="a-btn a-btn-sm" onClick={() => reject(t._id)} title="Reject">
-                            <XCircle size={12} style={{ color: "var(--a-red)" }} />
+                            <XCircle size={12} style={{ color: "var(--a-red)" }} /> Reject
                           </button>
                         </div>
                       ) : <span style={{ color: "var(--a-text-mute)" }}>—</span>}
                     </td>
-                  )}
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
               {items.length === 0 && (
-                <tr><td colSpan={allowActions ? (type === "withdraw" ? 7 : 6) : (type === "withdraw" ? 6 : 5)}
+                <tr><td colSpan={colCount}
                   className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No records.</td></tr>
               )}
             </tbody>
@@ -408,32 +445,67 @@ function TxFilterPage({
 }
 
 export function DepositsPage() { return <TxFilterPage type="deposit" title="Deposits" />; }
-export function WithdrawalsPage() { return <TxFilterPage type="withdraw" title="Withdrawals" allowActions />; }
+export function WithdrawalsPage() { return <TxFilterPage type="withdraw" title="Withdrawals" />; }
 
 /* ============= Wallet Adjust ============= */
 
 export function WalletAdjustPage() {
-  const [targetUserId, setTargetUserId] = useState("");
+  const [search, setSearch] = useState("");
+  const [q, setQ] = useState("");
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchErr, setSearchErr] = useState<string | null>(null);
+
   const [currency, setCurrency] = useState<"dollar" | "rupee" | "star">("dollar");
   const [balanceType, setBalanceType] = useState<"deposit" | "winning">("deposit");
+  const [mode, setMode] = useState<"add" | "deduct" | "set">("add");
   const [amount, setAmount] = useState("0");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!q) { setUsers([]); return; }
+    setSearching(true); setSearchErr(null);
+    listUsers({ search: q, limit: 25 })
+      .then((d) => setUsers(d.users))
+      .catch((e) => setSearchErr(e.message))
+      .finally(() => setSearching(false));
+  }, [q]);
+
+  const currentBalance = (u: AdminUser | null) => {
+    if (!u) return 0;
+    const field = balanceType === "winning"
+      ? (currency === "dollar" ? "dollarWinning" : currency === "rupee" ? "rupeeWinning" : "starWinning")
+      : (currency === "dollar" ? "dollarBalance" : currency === "rupee" ? "rupeeBalance" : "starBalance");
+    return Number((u as any)[field] || 0);
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null); setMsg(null);
+    if (!selected) { setErr("Select a user first"); return; }
     const amt = Number(amount);
-    if (!targetUserId.trim() || !Number.isFinite(amt) || amt === 0) {
-      setErr("Enter a valid Telegram ID and non-zero amount");
-      return;
-    }
+    if (!Number.isFinite(amt) || amt < 0) { setErr("Enter a non-negative amount"); return; }
+    let delta = amt;
+    if (mode === "deduct") delta = -amt;
+    if (mode === "set") delta = amt - currentBalance(selected);
+    if (delta === 0) { setErr("No change to apply"); return; }
     setBusy(true);
     try {
-      const r = await walletAdjust({ targetUserId: targetUserId.trim(), currency, amount: amt, balanceType, note });
-      setMsg(`✅ Adjusted. New balances: $${r.balance.dollarBalance} · ₹${r.balance.rupeeBalance} · ★${r.balance.starBalance}`);
+      const r = await walletAdjust({
+        targetUserId: selected.telegramId, currency, amount: delta, balanceType, note,
+      });
+      setMsg(`Saved. New balances: $${r.balance.dollarBalance} · ₹${r.balance.rupeeBalance} · ★${r.balance.starBalance}`);
+      // update selected user snapshot
+      setSelected({ ...selected,
+        dollarBalance: r.balance.dollarBalance, rupeeBalance: r.balance.rupeeBalance, starBalance: r.balance.starBalance,
+        dollarWinning: r.balance.dollarWinning ?? selected.dollarWinning,
+        rupeeWinning: r.balance.rupeeWinning ?? selected.rupeeWinning,
+        starWinning: r.balance.starWinning ?? selected.starWinning,
+      });
       setAmount("0"); setNote("");
     } catch (e) { setErr(e instanceof Error ? e.message : "Failed"); }
     finally { setBusy(false); }
@@ -441,54 +513,202 @@ export function WalletAdjustPage() {
 
   return (
     <Section eyebrow="TREASURY" title="Adjust user wallet">
-      <form onSubmit={submit} className="a-card max-w-2xl">
-        <div className="grid md:grid-cols-2 gap-3">
-          <div>
-            <label className="a-label">Target Telegram ID</label>
-            <input className="a-input" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} placeholder="e.g. 6965488457" />
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="a-card">
+          <div className="text-white font-bold text-[15px] mb-3">1. Find user</div>
+          <div className="flex gap-2 mb-3">
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl"
+                 style={{ background: "rgba(10,15,26,0.7)", border: "1px solid var(--a-border)" }}>
+              <Search size={14} style={{ color: "var(--a-text-mute)" }} />
+              <input
+                className="bg-transparent outline-none text-[13px] w-full placeholder:text-[var(--a-text-mute)]"
+                placeholder="Name, username, or Telegram ID"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && setQ(search.trim())}
+              />
+            </div>
+            <button className="a-btn" onClick={() => setQ(search.trim())}>Search</button>
           </div>
-          <div>
-            <label className="a-label">Currency</label>
-            <select className="a-select" value={currency} onChange={(e) => setCurrency(e.target.value as any)}>
-              <option value="dollar">Dollar ($)</option>
-              <option value="rupee">Rupee (₹)</option>
-              <option value="star">Star (★)</option>
-            </select>
-          </div>
-          <div>
-            <label className="a-label">Bucket</label>
-            <select className="a-select" value={balanceType} onChange={(e) => setBalanceType(e.target.value as any)}>
-              <option value="deposit">Deposit balance</option>
-              <option value="winning">Winning balance</option>
-            </select>
-          </div>
-          <div>
-            <label className="a-label">Amount (use negative to deduct)</label>
-            <input className="a-input" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="a-label">Note (optional)</label>
-            <input className="a-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason / reference" />
-          </div>
+          {searching ? <div className="text-[12px]" style={{ color: "var(--a-text-mute)" }}>Searching…</div>
+            : searchErr ? <div className="text-[12px]" style={{ color: "#ff9b9b" }}>{searchErr}</div>
+            : (
+              <div className="max-h-64 overflow-y-auto">
+                {users.map((u) => (
+                  <button key={u._id} type="button"
+                    onClick={() => setSelected(u)}
+                    className="w-full text-left px-3 py-2 rounded-lg mb-1 flex items-center justify-between"
+                    style={{
+                      background: selected?._id === u._id ? "rgba(74,168,255,0.15)" : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${selected?._id === u._id ? "var(--a-blue)" : "var(--a-border)"}`,
+                    }}>
+                    <div>
+                      <div className="text-white text-[13px] font-medium">{userName(u)}</div>
+                      <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>
+                        {u.username ? `@${u.username} · ` : ""}#{u.telegramId}
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-right" style={{ color: "var(--a-text-dim)" }}>
+                      ${Number(u.dollarBalance||0).toFixed(2)}<br/>
+                      ₹{Number(u.rupeeBalance||0).toFixed(2)} · ★{Number(u.starBalance||0).toFixed(0)}
+                    </div>
+                  </button>
+                ))}
+                {q && !users.length && <div className="text-[12px] text-center py-4" style={{ color: "var(--a-text-mute)" }}>No users found.</div>}
+                {!q && <div className="text-[12px] text-center py-4" style={{ color: "var(--a-text-mute)" }}>Search to load users.</div>}
+              </div>
+            )}
         </div>
-        {err && <div className="mt-3 text-[13px]" style={{ color: "#ff9b9b" }}>{err}</div>}
-        {msg && <div className="mt-3 text-[13px]" style={{ color: "var(--a-green)" }}>{msg}</div>}
-        <div className="flex justify-end mt-4">
-          <button disabled={busy} className="a-btn a-btn-primary">
-            {busy ? <Loader2 size={12} className="animate-spin" /> : <Coins size={12} />} Apply adjustment
-          </button>
-        </div>
-      </form>
+
+        <form onSubmit={submit} className="a-card">
+          <div className="text-white font-bold text-[15px] mb-3">2. Edit balance</div>
+          {selected ? (
+            <div className="mb-3 p-3 rounded-lg" style={{ background: "rgba(74,168,255,0.08)", border: "1px solid var(--a-border)" }}>
+              <div className="text-white font-semibold text-[14px]">{userName(selected)}</div>
+              <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>
+                {selected.username ? `@${selected.username} · ` : ""}#{selected.telegramId}
+              </div>
+              <div className="text-[12px] mt-2 grid grid-cols-3 gap-2">
+                <div>Dep $ <b className="text-white">{Number(selected.dollarBalance||0).toFixed(2)}</b></div>
+                <div>Dep ₹ <b className="text-white">{Number(selected.rupeeBalance||0).toFixed(2)}</b></div>
+                <div>Dep ★ <b className="text-white">{Number(selected.starBalance||0).toFixed(0)}</b></div>
+                <div>Win $ <b className="text-white">{Number(selected.dollarWinning||0).toFixed(2)}</b></div>
+                <div>Win ₹ <b className="text-white">{Number(selected.rupeeWinning||0).toFixed(2)}</b></div>
+                <div>Win ★ <b className="text-white">{Number(selected.starWinning||0).toFixed(0)}</b></div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-[12px] mb-3" style={{ color: "var(--a-text-mute)" }}>Select a user from the search results on the left.</div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="a-label">Currency</label>
+              <select className="a-select" value={currency} onChange={(e) => setCurrency(e.target.value as any)}>
+                <option value="dollar">Dollar ($)</option>
+                <option value="rupee">Rupee (₹)</option>
+                <option value="star">Star (★)</option>
+              </select>
+            </div>
+            <div>
+              <label className="a-label">Bucket</label>
+              <select className="a-select" value={balanceType} onChange={(e) => setBalanceType(e.target.value as any)}>
+                <option value="deposit">Deposit balance</option>
+                <option value="winning">Winning balance</option>
+              </select>
+            </div>
+            <div>
+              <label className="a-label">Action</label>
+              <select className="a-select" value={mode} onChange={(e) => setMode(e.target.value as any)}>
+                <option value="add">Add (+)</option>
+                <option value="deduct">Deduct (−)</option>
+                <option value="set">Set exact value</option>
+              </select>
+            </div>
+            <div>
+              <label className="a-label">Amount</label>
+              <input className="a-input" type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <label className="a-label">Note (optional)</label>
+              <input className="a-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason / reference" />
+            </div>
+          </div>
+          {selected && (
+            <div className="mt-3 text-[12px]" style={{ color: "var(--a-text-dim)" }}>
+              Current: <b className="text-white">{symFor(currency)}{currentBalance(selected).toFixed(2)}</b>
+            </div>
+          )}
+          {err && <div className="mt-3 text-[13px]" style={{ color: "#ff9b9b" }}>{err}</div>}
+          {msg && <div className="mt-3 text-[13px]" style={{ color: "var(--a-green)" }}>{msg}</div>}
+          <div className="flex justify-end mt-4">
+            <button disabled={busy || !selected} className="a-btn a-btn-primary">
+              {busy ? <Loader2 size={12} className="animate-spin" /> : <Coins size={12} />} Apply
+            </button>
+          </div>
+        </form>
+      </div>
     </Section>
   );
 }
 
-/* ============= Games ============= */
+/* ============= Games (with per-game analytics drill-down) ============= */
+
+function GameAnalyticsPanel({ game, onClose }: { game: string; onClose: () => void }) {
+  const [days, setDays] = useState(7);
+  const [data, setData] = useState<GameAnalytics | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true); setErr(null);
+    getGameAnalytics(game, days).then(setData).catch((e) => setErr(e.message)).finally(() => setLoading(false));
+  };
+  useEffect(load, [days]);
+
+  return (
+    <div className="a-card mt-3" style={{ border: "1px solid var(--a-blue)" }}>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="a-eyebrow a-eyebrow-dim">GAME ANALYTICS</div>
+          <div className="text-white text-[16px] font-bold capitalize">{game}</div>
+        </div>
+        <div className="flex gap-1">
+          {[7, 14, 30, 90].map((n) => (
+            <button key={n} className={`a-btn a-btn-sm ${days === n ? "a-btn-primary" : ""}`} onClick={() => setDays(n)}>{n}d</button>
+          ))}
+          <button className="a-btn a-btn-sm" onClick={load}><RefreshCw size={12} /></button>
+          <button className="a-btn a-btn-sm" onClick={onClose}>Close</button>
+        </div>
+      </div>
+      {loading ? <LoadingBlock /> : err ? <ErrorBlock message={err} onRetry={load} /> : data && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <StatCard label="Total bets" value={String(data.totals.betCount)} icon={<TrendingDown size={16} />} tone="yellow" />
+            <StatCard label="Total wins" value={String(data.totals.winCount)} icon={<TrendingUp size={16} />} tone="teal" />
+            <StatCard label="Bet volume"
+              value={`$${data.totals.bet.dollar.toFixed(2)} · ₹${data.totals.bet.rupee.toFixed(2)} · ★${data.totals.bet.star.toFixed(0)}`}
+              icon={<Coins size={16} />} tone="blue" />
+            <StatCard label="Win payout"
+              value={`$${data.totals.win.dollar.toFixed(2)} · ₹${data.totals.win.rupee.toFixed(2)} · ★${data.totals.win.star.toFixed(0)}`}
+              icon={<Coins size={16} />} tone="green" />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="a-table w-full">
+              <thead>
+                <tr><th>Day</th><th>Bets ($)</th><th>Wins ($)</th><th>Bets (₹)</th><th>Wins (₹)</th><th>Bets (★)</th><th>Wins (★)</th><th># Bets</th><th># Wins</th></tr>
+              </thead>
+              <tbody>
+                {data.series.map((d) => (
+                  <tr key={d.day}>
+                    <td>{d.day}</td>
+                    <td>${d.bet.dollar.toFixed(2)}</td>
+                    <td>${d.win.dollar.toFixed(2)}</td>
+                    <td>₹{d.bet.rupee.toFixed(2)}</td>
+                    <td>₹{d.win.rupee.toFixed(2)}</td>
+                    <td>★{d.bet.star.toFixed(0)}</td>
+                    <td>★{d.win.star.toFixed(0)}</td>
+                    <td>{d.betCount}</td>
+                    <td>{d.winCount}</td>
+                  </tr>
+                ))}
+                {!data.series.length && (
+                  <tr><td colSpan={9} className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No activity in this window.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function GamesPage() {
   const [data, setData] = useState<GameStatRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openGame, setOpenGame] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true); setErr(null);
@@ -507,13 +727,13 @@ export function GamesPage() {
           <thead>
             <tr>
               <th>Game</th><th>Bets ($)</th><th>Wins ($)</th><th>Bets (₹)</th><th>Wins (₹)</th>
-              <th>Bets (★)</th><th>Wins (★)</th><th>Total bets</th><th>Total wins</th>
+              <th>Bets (★)</th><th>Wins (★)</th><th>Total bets</th><th>Total wins</th><th></th>
             </tr>
           </thead>
           <tbody>
             {(data || []).map((g) => (
               <tr key={g.game}>
-                <td className="text-white font-semibold">{g.game}</td>
+                <td className="text-white font-semibold capitalize">{g.game}</td>
                 <td>${g.bets.dollar.toFixed(2)}</td>
                 <td>${g.wins.dollar.toFixed(2)}</td>
                 <td>₹{g.bets.rupee.toFixed(2)}</td>
@@ -522,14 +742,21 @@ export function GamesPage() {
                 <td>★{g.wins.star.toFixed(0)}</td>
                 <td>{g.betCount}</td>
                 <td>{g.winCount}</td>
+                <td>
+                  <button className="a-btn a-btn-sm"
+                    onClick={() => setOpenGame(openGame === g.game ? null : g.game)}>
+                    <Activity size={12} /> {openGame === g.game ? "Hide" : "Analytics"}
+                  </button>
+                </td>
               </tr>
             ))}
             {(!data || data.length === 0) && (
-              <tr><td colSpan={9} className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No game bets recorded yet.</td></tr>
+              <tr><td colSpan={10} className="text-center py-6" style={{ color: "var(--a-text-dim)" }}>No game bets recorded yet.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+      {openGame && <GameAnalyticsPanel game={openGame} onClose={() => setOpenGame(null)} />}
     </Section>
   );
 }
