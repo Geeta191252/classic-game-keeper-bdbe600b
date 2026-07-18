@@ -63,6 +63,7 @@ const formatTransactionTime = (value: unknown) => {
 const WalletScreen = () => {
   const [loading, setLoading] = useState(false);
   const [walletTab, setWalletTab] = useState<"deposit" | "withdraw">("deposit");
+  const [depositMethod, setDepositMethod] = useState<"crypto" | "inr" | "star">("crypto");
   const [amountDialog, setAmountDialog] = useState<{
     open: boolean;
     action: ActionType;
@@ -659,8 +660,30 @@ const WalletScreen = () => {
              DEPOSIT TAB
              ============================================ */
           <>
-            {/* UPI Deposit */}
-            {upiConfig && upiConfig.upiId && (
+            {/* Deposit Method Sub-Tabs: Crypto ($) / INR / Star */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#0d121f] border border-white/[0.02] rounded-2xl">
+              {([
+                { id: "crypto", label: "Crypto $", icon: "💲" },
+                { id: "inr", label: "INR", icon: "₹" },
+                { id: "star", label: "Star", icon: "⭐" },
+              ] as const).map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setDepositMethod(m.id)}
+                  className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1 ${
+                    depositMethod === m.id
+                      ? "bg-[#00a2e8] text-white shadow-md shadow-[#00a2e8]/20"
+                      : "text-[#8e97a4] hover:text-white"
+                  }`}
+                >
+                  <span>{m.icon}</span>
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* INR / UPI Deposit */}
+            {depositMethod === "inr" && upiConfig && upiConfig.upiId && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -676,7 +699,6 @@ const WalletScreen = () => {
                   </span>
                 </div>
                 <p className="text-[10px] text-[#8e97a4]">Pay using any Indian UPI App (PhonePe, GPay, Paytm) and get ₹ balance</p>
-                
                 <button
                   onClick={() => setUpiDepositDialog(true)}
                   className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-wider bg-[#00a2e8] hover:bg-[#0091d0] text-white shadow-md shadow-[#00a2e8]/20 transition-all flex items-center justify-center gap-1.5"
@@ -687,7 +709,10 @@ const WalletScreen = () => {
             )}
 
             {/* Crypto Deposit (NOWPayments) */}
+            {depositMethod === "crypto" && (
             <motion.div
+
+
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               id="crypto-deposit"
@@ -797,44 +822,10 @@ const WalletScreen = () => {
                 )}
               </AnimatePresence>
             </motion.div>
+            )}
 
-            {/* Star to Dollar Converter */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              id="star-converter"
-              className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
-            >
-              <div className="flex items-center gap-1.5">
-                <ArrowRightLeft className="h-4 w-4 text-[#00a2e8]" />
-                <h3 className="font-black text-xs text-white uppercase tracking-wider">Star to Cash Converter</h3>
-              </div>
-              <p className="text-[10px] text-[#8e97a4]">Convert Star balance to withdrawable Dollars ({STAR_TO_DOLLAR_RATE} ⭐ = $1.00)</p>
-
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    type="number"
-                    placeholder={`Min ${STAR_TO_DOLLAR_RATE} ⭐`}
-                    value={convertStars}
-                    onChange={(e) => setConvertStars(e.target.value)}
-                    className="pr-6 rounded-xl bg-[#0d121f] h-9 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
-                    min={STAR_TO_DOLLAR_RATE}
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">⭐</span>
-                </div>
-
-                <button
-                  onClick={handleConvert}
-                  disabled={converting || starInputNum < STAR_TO_DOLLAR_RATE}
-                  className="rounded-xl h-9 px-4 text-[10px] font-black uppercase bg-[#00a2e8] hover:bg-[#0091d0] text-white tracking-wider shadow-md shadow-[#00a2e8]/20 transition-all disabled:opacity-50"
-                >
-                  {converting ? "..." : `Convert to $${dollarOutput}`}
-                </button>
-              </div>
-            </motion.div>
-
-            {/* TON Wallet Connect & Deposit only */}
+            {/* TON Deposit — shown in Crypto tab */}
+            {depositMethod === "crypto" && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -885,6 +876,72 @@ const WalletScreen = () => {
                 </p>
               )}
             </motion.div>
+            )}
+
+            {/* STAR Deposit — Buy Stars with Telegram + Star→Cash converter */}
+            {depositMethod === "star" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Star className="h-4 w-4 text-amber-400" />
+                    <h3 className="font-black text-xs text-white uppercase tracking-wider">Star Deposit</h3>
+                  </div>
+                  <span className="text-[9px] font-extrabold bg-[#0d121f] text-amber-400 px-2 py-0.5 rounded border border-white/[0.01]">
+                    Credits ⭐ Wallet
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#8e97a4]">Buy Telegram Stars directly — instantly credited to your ⭐ wallet.</p>
+                <button
+                  onClick={() => handleCurrencySelect("deposit", "star")}
+                  className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Star className="h-4 w-4" /> Buy Stars with Telegram
+                </button>
+              </motion.div>
+            )}
+
+            {/* Star to Cash Converter — Star tab */}
+            {depositMethod === "star" && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              id="star-converter"
+              className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
+            >
+              <div className="flex items-center gap-1.5">
+                <ArrowRightLeft className="h-4 w-4 text-[#00a2e8]" />
+                <h3 className="font-black text-xs text-white uppercase tracking-wider">Star to Cash Converter</h3>
+              </div>
+              <p className="text-[10px] text-[#8e97a4]">Convert Star balance to withdrawable Dollars ({STAR_TO_DOLLAR_RATE} ⭐ = $1.00)</p>
+
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    type="number"
+                    placeholder={`Min ${STAR_TO_DOLLAR_RATE} ⭐`}
+                    value={convertStars}
+                    onChange={(e) => setConvertStars(e.target.value)}
+                    className="pr-6 rounded-xl bg-[#0d121f] h-9 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
+                    min={STAR_TO_DOLLAR_RATE}
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">⭐</span>
+                </div>
+
+                <button
+                  onClick={handleConvert}
+                  disabled={converting || starInputNum < STAR_TO_DOLLAR_RATE}
+                  className="rounded-xl h-9 px-4 text-[10px] font-black uppercase bg-[#00a2e8] hover:bg-[#0091d0] text-white tracking-wider shadow-md shadow-[#00a2e8]/20 transition-all disabled:opacity-50"
+                >
+                  {converting ? "..." : `Convert to $${dollarOutput}`}
+                </button>
+              </div>
+            </motion.div>
+            )}
+
           </>
         ) : (
           /* ============================================
