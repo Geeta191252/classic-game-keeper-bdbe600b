@@ -7,8 +7,10 @@ import {
 } from "lucide-react";
 import {
   getSummary, listUsers, listTransactions, walletAdjust,
-  approveWithdrawal, rejectWithdrawal, getAnalytics, getGameStats,
-  type AdminSummary, type AdminUser, type AdminTx, type AnalyticsDay, type GameStatRow,
+  approveWithdrawal, rejectWithdrawal, approveDeposit, rejectDeposit,
+  getAnalytics, getGameStats, getGameAnalytics,
+  type AdminSummary, type AdminUser, type AdminTx, type AnalyticsDay,
+  type GameStatRow, type GameAnalytics,
 } from "@/lib/adminApi";
 
 /* ============= Shared primitives ============= */
