@@ -671,298 +671,329 @@ const WalletScreen = () => {
              DEPOSIT TAB
              ============================================ */
           <>
-            {/* Deposit Method Sub-Tabs: Crypto ($) / INR / Star */}
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#0d121f] border border-white/[0.02] rounded-2xl">
-              {([
-                { id: "crypto", label: "Crypto $", icon: "💲" },
-                { id: "inr", label: "INR", icon: "₹" },
-                { id: "star", label: "Star", icon: "⭐" },
-              ] as const).map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setDepositMethod(m.id)}
-                  className={`py-2 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1 ${
-                    depositMethod === m.id
-                      ? "bg-[#00a2e8] text-white shadow-md shadow-[#00a2e8]/20"
-                      : "text-[#8e97a4] hover:text-white"
-                  }`}
-                >
-                  <span>{m.icon}</span>
-                  <span>{m.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* INR / UPI Deposit */}
-            {depositMethod === "inr" && upiConfig && upiConfig.upiId && (
+            {/* Deposit Method MENU Page */}
+            {depositStep === "menu" && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-3"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Smartphone className="h-4 w-4 text-[#00a2e8]" />
-                    <h3 className="font-black text-xs text-white uppercase tracking-wider">UPI Deposit</h3>
-                  </div>
-                  <span className="text-[9px] font-extrabold bg-[#0d121f] text-emerald-400 px-2 py-0.5 rounded border border-white/[0.01]">
-                    Credits ₹ Wallet
-                  </span>
-                </div>
-                <p className="text-[10px] text-[#8e97a4]">Pay using any Indian UPI App (PhonePe, GPay, Paytm) and get ₹ balance</p>
-                <button
-                  onClick={() => setUpiDepositDialog(true)}
-                  className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-wider bg-[#00a2e8] hover:bg-[#0091d0] text-white shadow-md shadow-[#00a2e8]/20 transition-all flex items-center justify-center gap-1.5"
-                >
-                  Pay with UPI / QR Code
-                </button>
-              </motion.div>
-            )}
-
-            {/* Crypto Deposit (NOWPayments) */}
-            {depositMethod === "crypto" && (
-            <motion.div
-
-
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              id="crypto-deposit"
-              className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
-            >
-              <div className="flex items-center gap-1.5">
-                <Coins className="h-4 w-4 text-[#00a2e8]" />
-                <h3 className="font-black text-xs text-white uppercase tracking-wider">Crypto Deposit</h3>
-              </div>
-              <p className="text-[10px] text-[#8e97a4]">Pay with any crypto → Get $ in wallet</p>
-
-              {/* Crypto grid — full page style */}
-              <div className="grid grid-cols-3 gap-2">
-                {cryptoOptions.map((coin) => {
-                  const active = cryptoCurrency === coin.id;
+                <p className="text-[10px] font-extrabold text-[#8e97a4] uppercase tracking-wider text-center">
+                  Choose Deposit Method
+                </p>
+                {([
+                  { id: "crypto", label: "Crypto $", desc: "BTC • LTC • TON • SOL • TRX • DOGE", icon: DollarSign, color: "#00a2e8" },
+                  { id: "inr", label: "INR", desc: "UPI / QR Code", icon: IndianRupee, color: "#10b981" },
+                  { id: "star", label: "Star", desc: "Telegram Stars ⭐", icon: Star, color: "#f59e0b" },
+                ] as const).map((m) => {
+                  const Icon = m.icon;
                   return (
                     <button
-                      key={coin.id}
-                      onClick={() => setCryptoCurrency(coin.id)}
-                      className={`rounded-2xl p-3 flex flex-col items-start gap-2 transition-all border ${
-                        active
-                          ? "bg-[#00a2e8]/10 border-[#00a2e8]/50 shadow-md shadow-[#00a2e8]/10"
-                          : "bg-[#0d121f] border-white/[0.04] hover:border-white/10"
-                      }`}
+                      key={m.id}
+                      onClick={() => setDepositStep(m.id)}
+                      className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#141b2b] border border-white/[0.02] hover:border-white/10 hover:bg-[#1a2235] transition-all text-left shadow-md"
                     >
-                      <div className="flex items-center gap-1.5 w-full">
-                        <div
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-                          style={{ background: coin.color }}
-                        >
-                          {coin.symbol}
-                        </div>
-                        <span className="text-[13px] font-black text-white tracking-tight">{coin.label}</span>
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${m.color}15`, color: m.color }}
+                      >
+                        <Icon className="h-6 w-6" />
                       </div>
-                      <span className="text-[10px] text-[#8e97a4] font-medium leading-none">{coin.name}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-sm text-white">{m.label}</p>
+                        <p className="text-[10px] text-[#8e97a4] truncate">{m.desc}</p>
+                      </div>
+                      <ArrowRightLeft className="h-4 w-4 text-[#8e97a4] rotate-[-90deg]" />
                     </button>
                   );
                 })}
-              </div>
-
-              {/* Amount input for selected crypto */}
-              <div className="flex gap-2 pt-1">
-                <div className="flex-1 relative">
-                  <Input
-                    type="number"
-                    placeholder={`USD amount (min $${cryptoMins[cryptoCurrency] || 1})`}
-                    value={cryptoAmount}
-                    onChange={(e) => setCryptoAmount(e.target.value)}
-                    className="pr-7 rounded-xl bg-[#0d121f] h-10 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
-                    min={cryptoMins[cryptoCurrency] || 1}
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8e97a4] font-black">$</span>
-                </div>
-                <button
-                  className="rounded-xl h-10 px-4 bg-[#00a2e8] hover:bg-[#0091d0] text-white text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                  disabled={cryptoProcessing || !cryptoAmount}
-                  onClick={handleCryptoDeposit}
-                >
-                  {cryptoProcessing ? "..." : <>Pay <ExternalLink className="h-3 w-3" /></>}
-                </button>
-              </div>
-
-
-              {/* Payment details shown in-app */}
-              <AnimatePresence>
-                {cryptoPayment && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="bg-[#0d121f] border border-white/[0.02] rounded-xl p-4 space-y-3"
-                  >
-                    <p className="text-[11px] font-semibold text-white">
-                      Send exactly <span className="text-[#00a2e8] font-bold">{cryptoPayment.payAmount} {cryptoPayment.payCurrency.toUpperCase()}</span>
-                    </p>
-                    {/* QR Code */}
-                    <div className="flex justify-center py-2">
-                      <div className="bg-white p-2.5 rounded-2xl shadow-inner">
-                        <QRCodeSVG
-                          value={cryptoPayment.payAddress}
-                          size={150}
-                          level="H"
-                          includeMargin={false}
-                        />
-                      </div>
-                    </div>
-                    <div className="bg-[#141b2b] border border-white/[0.02] rounded-xl p-3">
-                      <p className="text-[9px] font-extrabold text-[#00a2e8] mb-0.5 uppercase tracking-wider">
-                        {cryptoPayment.payCurrency.toUpperCase()} Address:
-                      </p>
-                      <p className="text-[9px] font-mono text-slate-200 break-all select-all">{cryptoPayment.payAddress}</p>
-                    </div>
-                    <button
-                      className="w-full rounded-xl py-2 text-xs font-black uppercase tracking-wider bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.02] transition-colors"
-                      onClick={() => {
-                        safeCopy(cryptoPayment.payAddress);
-                      }}
-                    >
-                      Copy Address
-                    </button>
-                    <p className="text-[8px] text-[#8e97a4] text-center">
-                      Balance updates automatically after confirmation • Send exact amount only
-                    </p>
-                    {paymentStatus && paymentStatus !== "completed" && (
-                      <div className="flex items-center gap-2 bg-[#00a2e8]/10 rounded-xl px-3 py-2 border border-[#00a2e8]/10">
-                        <span className="animate-pulse text-[#00a2e8] text-lg">⏳</span>
-                        <span className="text-[10px] font-medium text-slate-200 capitalize">
-                          Status: {paymentStatus === "pending" ? "Waiting for payment..." : paymentStatus}
-                        </span>
-                      </div>
-                    )}
-                    <button
-                      className="w-full text-[10px] font-bold text-slate-500 hover:text-white mt-1"
-                      onClick={() => setCryptoPayment(null)}
-                    >
-                      Close
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+              </motion.div>
             )}
 
-            {/* TON Deposit — shown in Crypto tab */}
-            {depositMethod === "crypto" && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Wallet className="h-4 w-4 text-[#00a2e8]" />
-                  <h3 className="font-black text-xs text-white uppercase tracking-wider">TON Deposit</h3>
+            {/* CRYPTO DEPOSIT PAGE */}
+            {depositStep === "crypto" && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDepositStep("menu")}
+                    className="flex items-center gap-1 text-[10px] font-black text-[#8e97a4] hover:text-white transition-colors"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
+                  <span className="font-black text-xs text-white uppercase tracking-wider">Crypto Deposit</span>
                 </div>
-                {tonPrice && (
-                  <span className="text-[9px] font-extrabold bg-[#0d121f] text-amber-400 px-2 py-0.5 rounded border border-white/[0.01]">
-                    1 TON = ${tonPrice.toFixed(2)}
-                  </span>
+
+                {/* Crypto currency grid */}
+                <div className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md">
+                  <p className="text-[10px] text-[#8e97a4]">Select currency → Pay → Get $ in wallet</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {cryptoOptions.map((coin) => {
+                      const active = cryptoCurrency === coin.id;
+                      return (
+                        <button
+                          key={coin.id}
+                          onClick={() => setCryptoCurrency(coin.id)}
+                          className={`rounded-2xl p-3 flex flex-col items-start gap-2 transition-all border ${
+                            active
+                              ? "bg-[#00a2e8]/10 border-[#00a2e8]/50 shadow-md shadow-[#00a2e8]/10"
+                              : "bg-[#0d121f] border-white/[0.04] hover:border-white/10"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 w-full">
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                              style={{ background: coin.color }}
+                            >
+                              {coin.symbol}
+                            </div>
+                            <span className="text-[13px] font-black text-white tracking-tight">{coin.label}</span>
+                          </div>
+                          <span className="text-[10px] text-[#8e97a4] font-medium leading-none">{coin.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <div className="flex-1 relative">
+                      <Input
+                        type="number"
+                        placeholder={`USD amount (min $${cryptoMins[cryptoCurrency] || 1})`}
+                        value={cryptoAmount}
+                        onChange={(e) => setCryptoAmount(e.target.value)}
+                        className="pr-7 rounded-xl bg-[#0d121f] h-10 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
+                        min={cryptoMins[cryptoCurrency] || 1}
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#8e97a4] font-black">$</span>
+                    </div>
+                    <button
+                      className="rounded-xl h-10 px-4 bg-[#00a2e8] hover:bg-[#0091d0] text-white text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                      disabled={cryptoProcessing || !cryptoAmount}
+                      onClick={handleCryptoDeposit}
+                    >
+                      {cryptoProcessing ? "..." : <>Pay <ExternalLink className="h-3 w-3" /></>}
+                    </button>
+                  </div>
+
+                  <AnimatePresence>
+                    {cryptoPayment && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-[#0d121f] border border-white/[0.02] rounded-xl p-4 space-y-3"
+                      >
+                        <p className="text-[11px] font-semibold text-white">
+                          Send exactly <span className="text-[#00a2e8] font-bold">{cryptoPayment.payAmount} {cryptoPayment.payCurrency.toUpperCase()}</span>
+                        </p>
+                        <div className="flex justify-center py-2">
+                          <div className="bg-white p-2.5 rounded-2xl shadow-inner">
+                            <QRCodeSVG
+                              value={cryptoPayment.payAddress}
+                              size={150}
+                              level="H"
+                              includeMargin={false}
+                            />
+                          </div>
+                        </div>
+                        <div className="bg-[#141b2b] border border-white/[0.02] rounded-xl p-3">
+                          <p className="text-[9px] font-extrabold text-[#00a2e8] mb-0.5 uppercase tracking-wider">
+                            {cryptoPayment.payCurrency.toUpperCase()} Address:
+                          </p>
+                          <p className="text-[9px] font-mono text-slate-200 break-all select-all">{cryptoPayment.payAddress}</p>
+                        </div>
+                        <button
+                          className="w-full rounded-xl py-2 text-xs font-black uppercase tracking-wider bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.02] transition-colors"
+                          onClick={() => safeCopy(cryptoPayment.payAddress)}
+                        >
+                          Copy Address
+                        </button>
+                        <p className="text-[8px] text-[#8e97a4] text-center">
+                          Balance updates automatically after confirmation • Send exact amount only
+                        </p>
+                        {paymentStatus && paymentStatus !== "completed" && (
+                          <div className="flex items-center gap-2 bg-[#00a2e8]/10 rounded-xl px-3 py-2 border border-[#00a2e8]/10">
+                            <span className="animate-pulse text-[#00a2e8] text-lg">⏳</span>
+                            <span className="text-[10px] font-medium text-slate-200 capitalize">
+                              Status: {paymentStatus === "pending" ? "Waiting for payment..." : paymentStatus}
+                            </span>
+                          </div>
+                        )}
+                        <button
+                          className="w-full text-[10px] font-bold text-slate-500 hover:text-white mt-1"
+                          onClick={() => setCryptoPayment(null)}
+                        >
+                          Close
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* TON Deposit — also on crypto page */}
+                <div className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Wallet className="h-4 w-4 text-[#00a2e8]" />
+                      <h3 className="font-black text-xs text-white uppercase tracking-wider">TON Deposit</h3>
+                    </div>
+                    {tonPrice && (
+                      <span className="text-[9px] font-extrabold bg-[#0d121f] text-amber-400 px-2 py-0.5 rounded border border-white/[0.01]">
+                        1 TON = ${tonPrice.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-center py-1">
+                    <div className="ton-connect-button-container" style={{ transform: "scale(0.9)" }} />
+                  </div>
+                  {tonAddress ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[9px] font-extrabold text-[#8e97a4] uppercase tracking-wider">Instant TON Deposit</p>
+                      <div className="flex gap-2">
+                        <div className="flex-1 relative">
+                          <Input
+                            type="number"
+                            placeholder="Amount of TON"
+                            value={tonDepositAmount}
+                            onChange={(e) => setTonDepositAmount(e.target.value)}
+                            className="pr-8 rounded-xl bg-[#0d121f] h-9 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">TON</span>
+                        </div>
+                        <button
+                          onClick={handleTonDeposit}
+                          disabled={tonProcessing || !tonDepositAmount}
+                          className="rounded-xl h-9 px-4 text-[10px] font-black uppercase bg-[#00a2e8] hover:bg-[#0091d0] text-white tracking-wider shadow-md shadow-[#00a2e8]/20 transition-all disabled:opacity-50"
+                        >
+                          {tonProcessing ? "..." : "Deposit"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[9px] text-[#8e97a4] text-center py-2">
+                      ⚠️ Connect your TON wallet to perform instant TON deposits.
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* INR / UPI DEPOSIT PAGE */}
+            {depositStep === "inr" && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDepositStep("menu")}
+                    className="flex items-center gap-1 text-[10px] font-black text-[#8e97a4] hover:text-white transition-colors"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
+                  <span className="font-black text-xs text-white uppercase tracking-wider">INR Deposit</span>
+                </div>
+
+                {upiConfig && upiConfig.upiId ? (
+                  <div className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Smartphone className="h-4 w-4 text-[#00a2e8]" />
+                        <h3 className="font-black text-xs text-white uppercase tracking-wider">UPI Deposit</h3>
+                      </div>
+                      <span className="text-[9px] font-extrabold bg-[#0d121f] text-emerald-400 px-2 py-0.5 rounded border border-white/[0.01]">
+                        Credits ₹ Wallet
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[#8e97a4]">Pay using any Indian UPI App (PhonePe, GPay, Paytm) and get ₹ balance</p>
+                    <button
+                      onClick={() => setUpiDepositDialog(true)}
+                      className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-wider bg-[#00a2e8] hover:bg-[#0091d0] text-white shadow-md shadow-[#00a2e8]/20 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      Pay with UPI / QR Code
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 text-center text-[10px] text-[#8e97a4]">
+                    UPI deposit currently unavailable.
+                  </div>
                 )}
-              </div>
+              </motion.div>
+            )}
 
-              <div className="flex justify-center py-1">
-                <div className="ton-connect-button-container" style={{ transform: "scale(0.9)" }} />
-              </div>
+            {/* STAR DEPOSIT PAGE */}
+            {depositStep === "star" && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDepositStep("menu")}
+                    className="flex items-center gap-1 text-[10px] font-black text-[#8e97a4] hover:text-white transition-colors"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
+                  <span className="font-black text-xs text-white uppercase tracking-wider">Star Deposit</span>
+                </div>
 
-              {tonAddress ? (
-                <div className="space-y-1.5">
-                  <p className="text-[9px] font-extrabold text-[#8e97a4] uppercase tracking-wider">Instant TON Deposit</p>
+                <div className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Star className="h-4 w-4 text-amber-400" />
+                      <h3 className="font-black text-xs text-white uppercase tracking-wider">Buy Stars</h3>
+                    </div>
+                    <span className="text-[9px] font-extrabold bg-[#0d121f] text-amber-400 px-2 py-0.5 rounded border border-white/[0.01]">
+                      Credits ⭐ Wallet
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[#8e97a4]">Buy Telegram Stars directly — instantly credited to your ⭐ wallet.</p>
+                  <button
+                    onClick={() => handleCurrencySelect("deposit", "star")}
+                    className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Star className="h-4 w-4" /> Buy Stars with Telegram
+                  </button>
+                </div>
+
+                <div className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md">
+                  <div className="flex items-center gap-1.5">
+                    <ArrowRightLeft className="h-4 w-4 text-[#00a2e8]" />
+                    <h3 className="font-black text-xs text-white uppercase tracking-wider">Star to Cash Converter</h3>
+                  </div>
+                  <p className="text-[10px] text-[#8e97a4]">Convert Star balance to withdrawable Dollars ({STAR_TO_DOLLAR_RATE} ⭐ = $1.00)</p>
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
                       <Input
                         type="number"
-                        placeholder="Amount of TON"
-                        value={tonDepositAmount}
-                        onChange={(e) => setTonDepositAmount(e.target.value)}
-                        className="pr-8 rounded-xl bg-[#0d121f] h-9 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
+                        placeholder={`Min ${STAR_TO_DOLLAR_RATE} ⭐`}
+                        value={convertStars}
+                        onChange={(e) => setConvertStars(e.target.value)}
+                        className="pr-6 rounded-xl bg-[#0d121f] h-9 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
+                        min={STAR_TO_DOLLAR_RATE}
                       />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">TON</span>
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">⭐</span>
                     </div>
                     <button
-                      onClick={handleTonDeposit}
-                      disabled={tonProcessing || !tonDepositAmount}
+                      onClick={handleConvert}
+                      disabled={converting || starInputNum < STAR_TO_DOLLAR_RATE}
                       className="rounded-xl h-9 px-4 text-[10px] font-black uppercase bg-[#00a2e8] hover:bg-[#0091d0] text-white tracking-wider shadow-md shadow-[#00a2e8]/20 transition-all disabled:opacity-50"
                     >
-                      {tonProcessing ? "..." : "Deposit"}
+                      {converting ? "..." : `Convert to $${dollarOutput}`}
                     </button>
                   </div>
                 </div>
-              ) : (
-                <p className="text-[9px] text-[#8e97a4] text-center py-2">
-                  ⚠️ Connect your TON wallet to perform instant TON deposits.
-                </p>
-              )}
-            </motion.div>
-            )}
-
-            {/* STAR Deposit — Buy Stars with Telegram + Star→Cash converter */}
-            {depositMethod === "star" && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Star className="h-4 w-4 text-amber-400" />
-                    <h3 className="font-black text-xs text-white uppercase tracking-wider">Star Deposit</h3>
-                  </div>
-                  <span className="text-[9px] font-extrabold bg-[#0d121f] text-amber-400 px-2 py-0.5 rounded border border-white/[0.01]">
-                    Credits ⭐ Wallet
-                  </span>
-                </div>
-                <p className="text-[10px] text-[#8e97a4]">Buy Telegram Stars directly — instantly credited to your ⭐ wallet.</p>
-                <button
-                  onClick={() => handleCurrencySelect("deposit", "star")}
-                  className="w-full rounded-xl h-10 text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <Star className="h-4 w-4" /> Buy Stars with Telegram
-                </button>
               </motion.div>
-            )}
-
-            {/* Star to Cash Converter — Star tab */}
-            {depositMethod === "star" && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              id="star-converter"
-              className="bg-[#141b2b] border border-white/[0.02] rounded-2xl p-4 space-y-3.5 shadow-md"
-            >
-              <div className="flex items-center gap-1.5">
-                <ArrowRightLeft className="h-4 w-4 text-[#00a2e8]" />
-                <h3 className="font-black text-xs text-white uppercase tracking-wider">Star to Cash Converter</h3>
-              </div>
-              <p className="text-[10px] text-[#8e97a4]">Convert Star balance to withdrawable Dollars ({STAR_TO_DOLLAR_RATE} ⭐ = $1.00)</p>
-
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    type="number"
-                    placeholder={`Min ${STAR_TO_DOLLAR_RATE} ⭐`}
-                    value={convertStars}
-                    onChange={(e) => setConvertStars(e.target.value)}
-                    className="pr-6 rounded-xl bg-[#0d121f] h-9 text-xs border-white/[0.02] text-white placeholder-slate-500 font-bold"
-                    min={STAR_TO_DOLLAR_RATE}
-                  />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-[#8e97a4]">⭐</span>
-                </div>
-
-                <button
-                  onClick={handleConvert}
-                  disabled={converting || starInputNum < STAR_TO_DOLLAR_RATE}
-                  className="rounded-xl h-9 px-4 text-[10px] font-black uppercase bg-[#00a2e8] hover:bg-[#0091d0] text-white tracking-wider shadow-md shadow-[#00a2e8]/20 transition-all disabled:opacity-50"
-                >
-                  {converting ? "..." : `Convert to $${dollarOutput}`}
-                </button>
-              </div>
-            </motion.div>
             )}
 
           </>
