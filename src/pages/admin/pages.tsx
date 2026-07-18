@@ -195,6 +195,17 @@ function Kv({ label, value }: { label: string; value: string }) {
 
 function symFor(c: string) { return c === "dollar" ? "$" : c === "rupee" ? "₹" : c === "star" ? "★" : ""; }
 
+function txUserLabel(t: AdminTx) {
+  const u = t.user;
+  if (u) {
+    const name = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+    const primary = name || u.username || `User #${t.telegramId}`;
+    const sub = u.username ? `@${u.username}` : `#${t.telegramId}`;
+    return { primary, sub };
+  }
+  return { primary: `User #${t.telegramId}`, sub: `#${t.telegramId}` };
+}
+
 function TxTable({ items }: { items: AdminTx[] }) {
   if (!items.length) return <div className="a-card text-center py-8" style={{ color: "var(--a-text-dim)" }}>No transactions yet.</div>;
   return (
@@ -206,25 +217,31 @@ function TxTable({ items }: { items: AdminTx[] }) {
           </tr>
         </thead>
         <tbody>
-          {items.map((t) => (
-            <tr key={t._id}>
-              <td>{fmtDate(t.createdAt)}</td>
-              <td>#{t.telegramId}</td>
-              <td><span className="a-chip">{t.type}</span></td>
-              <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
-              <td>
-                <span className="a-chip" style={{
-                  background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
-                              t.status === "pending" ? "rgba(255,196,0,0.14)" :
-                              "rgba(255,80,80,0.14)",
-                  color: t.status === "completed" ? "var(--a-green)" :
-                         t.status === "pending" ? "var(--a-yellow)" :
-                         "var(--a-red)",
-                }}>{t.status}</span>
-              </td>
-              <td style={{ color: "var(--a-text-dim)" }}>{t.game || t.description || "—"}</td>
-            </tr>
-          ))}
+          {items.map((t) => {
+            const u = txUserLabel(t);
+            return (
+              <tr key={t._id}>
+                <td>{fmtDate(t.createdAt)}</td>
+                <td>
+                  <div className="text-white font-medium">{u.primary}</div>
+                  <div className="text-[11px]" style={{ color: "var(--a-text-mute)" }}>{u.sub}</div>
+                </td>
+                <td><span className="a-chip">{t.type}</span></td>
+                <td>{symFor(t.currency)}{Number(t.amount || 0).toLocaleString()}</td>
+                <td>
+                  <span className="a-chip" style={{
+                    background: t.status === "completed" ? "rgba(52,211,153,0.14)" :
+                                t.status === "pending" ? "rgba(255,196,0,0.14)" :
+                                "rgba(255,80,80,0.14)",
+                    color: t.status === "completed" ? "var(--a-green)" :
+                           t.status === "pending" ? "var(--a-yellow)" :
+                           "var(--a-red)",
+                  }}>{t.status}</span>
+                </td>
+                <td style={{ color: "var(--a-text-dim)" }}>{t.game || t.description || "—"}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
