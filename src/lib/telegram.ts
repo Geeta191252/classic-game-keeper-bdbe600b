@@ -414,3 +414,53 @@ export const cancelAviatorBet = async (userId: number | string, currency: Curren
 };
 
 
+
+// ============================================
+// AVIATOR FUN (independent variant) API
+// ============================================
+export type AviatorFunState = AviatorState;
+
+export const fetchAviatorFunState = async (currency: CurrencyType): Promise<AviatorFunState> => {
+  const res = await fetch(`${API_BASE_URL}/aviator-fun/state?currency=${currency}`);
+  if (!res.ok) throw new Error("Failed to fetch aviator-fun state");
+  return res.json();
+};
+
+export const placeAviatorFunBet = async (data: {
+  userId: number | string;
+  amount: number;
+  currency: CurrencyType;
+  firstName?: string;
+  slot?: 1 | 2;
+}): Promise<{ success: boolean; roundNumber: number; slot: number } & Partial<BalancePayload>> => {
+  const res = await fetch(`${API_BASE_URL}/aviator-fun/bet`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || "Failed to place bet");
+  return publishBalancePayload(json);
+};
+
+export const cashOutAviatorFun = async (userId: number | string, currency: CurrencyType, slot: 1 | 2 = 1) => {
+  const res = await fetch(`${API_BASE_URL}/aviator-fun/cashout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, currency, slot }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || "Failed to cash out");
+  return publishBalancePayload(json);
+};
+
+export const cancelAviatorFunBet = async (userId: number | string, currency: CurrencyType, slot: 1 | 2 = 1) => {
+  const res = await fetch(`${API_BASE_URL}/aviator-fun/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, currency, slot }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error || "Failed to cancel bet");
+  return publishBalancePayload(json);
+};
