@@ -14,7 +14,66 @@ import {
 } from "@/lib/telegram";
 import { GameCurrencyMode, modeToWallet, toNativeAmount, toDisplayAmount, currencySymbol } from "@/lib/gameCurrency";
 import rocketImg from "@/assets/jetx-rocket-v2.png";
-import bgNight from "@/assets/jetx-bg-long.jpg.asset.json";
+// Cartoon cloud sky — procedural SVG tiles (two parallax layers, varied clouds)
+const CLOUDS_BACK = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns='http://www.w3.org/2000/svg' width='400' height='800' viewBox='0 0 400 800'>
+  <defs>
+    <radialGradient id='p' cx='50%' cy='50%' r='50%'>
+      <stop offset='0%' stop-color='%23b892ff' stop-opacity='0.95'/>
+      <stop offset='60%' stop-color='%237c5cff' stop-opacity='0.55'/>
+      <stop offset='100%' stop-color='%237c5cff' stop-opacity='0'/>
+    </radialGradient>
+    <radialGradient id='w' cx='50%' cy='50%' r='50%'>
+      <stop offset='0%' stop-color='%23ffffff' stop-opacity='0.28'/>
+      <stop offset='100%' stop-color='%23ffffff' stop-opacity='0'/>
+    </radialGradient>
+  </defs>
+  <g opacity='0.9'>
+    <ellipse cx='60' cy='90' rx='90' ry='38' fill='url(%23p)'/>
+    <ellipse cx='330' cy='220' rx='80' ry='32' fill='url(%23p)'/>
+    <ellipse cx='40' cy='420' rx='70' ry='30' fill='url(%23p)'/>
+    <ellipse cx='360' cy='560' rx='95' ry='40' fill='url(%23p)'/>
+    <ellipse cx='120' cy='700' rx='75' ry='30' fill='url(%23p)'/>
+  </g>
+  <g>
+    <circle cx='200' cy='60' r='1.4' fill='white' opacity='0.9'/>
+    <circle cx='90' cy='180' r='1' fill='white' opacity='0.8'/>
+    <circle cx='300' cy='120' r='1.2' fill='white' opacity='0.85'/>
+    <circle cx='250' cy='330' r='1' fill='white' opacity='0.75'/>
+    <circle cx='30' cy='300' r='1.3' fill='white' opacity='0.9'/>
+    <circle cx='180' cy='500' r='1.1' fill='white' opacity='0.8'/>
+    <circle cx='370' cy='450' r='1' fill='white' opacity='0.75'/>
+    <circle cx='60' cy='620' r='1.4' fill='white' opacity='0.9'/>
+    <circle cx='280' cy='650' r='1' fill='white' opacity='0.8'/>
+    <circle cx='210' cy='770' r='1.2' fill='white' opacity='0.85'/>
+  </g>
+</svg>`)}`;
+
+const CLOUDS_FRONT = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns='http://www.w3.org/2000/svg' width='400' height='900' viewBox='0 0 400 900'>
+  <defs>
+    <radialGradient id='c' cx='50%' cy='40%' r='60%'>
+      <stop offset='0%' stop-color='%23ffffff' stop-opacity='0.95'/>
+      <stop offset='55%' stop-color='%23c9d8ff' stop-opacity='0.55'/>
+      <stop offset='100%' stop-color='%237ba0ff' stop-opacity='0'/>
+    </radialGradient>
+    <radialGradient id='pk' cx='50%' cy='40%' r='60%'>
+      <stop offset='0%' stop-color='%23ffd6f2' stop-opacity='0.9'/>
+      <stop offset='55%' stop-color='%23e879f9' stop-opacity='0.45'/>
+      <stop offset='100%' stop-color='%23a855f7' stop-opacity='0'/>
+    </radialGradient>
+  </defs>
+  <g>
+    <ellipse cx='70' cy='120' rx='110' ry='42' fill='url(%23pk)'/>
+    <ellipse cx='340' cy='60' rx='95' ry='36' fill='url(%23c)'/>
+    <ellipse cx='320' cy='300' rx='120' ry='45' fill='url(%23pk)'/>
+    <ellipse cx='50' cy='380' rx='100' ry='40' fill='url(%23c)'/>
+    <ellipse cx='360' cy='540' rx='90' ry='36' fill='url(%23c)'/>
+    <ellipse cx='80' cy='640' rx='120' ry='45' fill='url(%23pk)'/>
+    <ellipse cx='300' cy='780' rx='105' ry='40' fill='url(%23c)'/>
+    <ellipse cx='40' cy='860' rx='85' ry='34' fill='url(%23pk)'/>
+  </g>
+</svg>`)}`;
 
 type Phase = "betting" | "flying" | "crashed";
 
