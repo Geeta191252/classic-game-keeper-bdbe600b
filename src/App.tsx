@@ -30,6 +30,7 @@ const ChickenClassicGame = lazy(() => import("./pages/ChickenClassicGame"));
 const JetXGame = lazy(() => import("./pages/JetXGame"));
 const TwistGame = lazy(() => import("./pages/TwistGame"));
 const GoblinTower = lazy(() => import("./pages/GoblinTower"));
+const RocketCrash = lazy(() => import("./pages/RocketCrash"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
@@ -149,6 +150,7 @@ const App = () => {
                   <Route path="/jetx" element={framed(<JetXGame />)} />
                   <Route path="/twist" element={framed(<TwistGame />)} />
                   <Route path="/goblin-tower" element={framed(<GoblinTower />)} />
+                  <Route path="/rocket-crash" element={<RocketCrash />} />
                   <Route path="/admin-legacy" element={<AdminPanel />} />
                   <Route path="/admin" element={<AdminLogin />} />
                   <Route path="/admin/login" element={<AdminLogin />} />
