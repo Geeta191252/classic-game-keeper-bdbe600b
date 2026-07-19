@@ -411,47 +411,51 @@ const JetXGame = () => {
             {/* Flame plume */}
             <div
               className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: "94%", width: "56%", height: `${flameHvh}vh`, maxHeight: "60vh" }}
+              style={{ top: "96%", width: "72%", height: `${flameHvh}vh`, maxHeight: "60vh" }}
             >
+              {/* wide outer glow */}
               <motion.div
                 style={{
-                  position: "absolute", inset: "0 -70% 0 -70%",
+                  position: "absolute", inset: "-10% -50% -10% -50%",
                   background:
-                    "radial-gradient(ellipse at top, rgba(251,146,60,0.55) 0%, rgba(234,88,12,0.25) 40%, transparent 75%)",
-                  filter: "blur(18px)",
+                    "radial-gradient(ellipse at top, rgba(251,146,60,0.6) 0%, rgba(234,88,12,0.3) 35%, transparent 70%)",
+                  filter: "blur(22px)",
                 }}
                 animate={{ opacity: [0.7, 1, 0.75, 1, 0.8] }}
                 transition={{ duration: 0.25, repeat: Infinity }}
               />
+              {/* orange main column */}
               <motion.div
                 style={{
                   position: "absolute", inset: 0,
                   background:
-                    "linear-gradient(180deg, #fef08a 0%, #fbbf24 18%, #f97316 45%, #ea580c 70%, #b91c1c 88%, transparent 100%)",
+                    "linear-gradient(180deg, rgba(254,240,138,0) 0%, #fde047 8%, #fbbf24 22%, #f97316 45%, #ea580c 70%, #c2410c 90%, transparent 100%)",
                   clipPath:
-                    "polygon(50% 0%, 88% 15%, 100% 45%, 92% 75%, 70% 95%, 50% 100%, 30% 95%, 8% 75%, 0% 45%, 12% 15%)",
-                  filter: "drop-shadow(0 0 26px rgba(249,115,22,0.9))",
+                    "polygon(50% 0%, 82% 10%, 96% 35%, 92% 60%, 78% 82%, 62% 94%, 50% 100%, 38% 94%, 22% 82%, 8% 60%, 4% 35%, 18% 10%)",
+                  filter: "drop-shadow(0 0 30px rgba(249,115,22,0.95))",
                   transformOrigin: "top center",
                 }}
-                animate={{ scaleY: [1, 1.1, 0.94, 1.06, 1], scaleX: [1, 0.95, 1.04, 0.97, 1] }}
+                animate={{ scaleY: [1, 1.12, 0.92, 1.08, 1], scaleX: [1, 0.96, 1.05, 0.98, 1] }}
                 transition={{ duration: 0.2, repeat: Infinity }}
               />
+              {/* bright yellow inner core */}
               <motion.div
                 style={{
-                  position: "absolute", top: 0, left: "24%", right: "24%", bottom: "22%",
+                  position: "absolute", top: 0, left: "18%", right: "18%", bottom: "18%",
                   background:
-                    "linear-gradient(180deg, #ffffff 0%, #fef3c7 25%, #fde047 55%, #f59e0b 90%, transparent 100%)",
-                  clipPath: "polygon(50% 0%, 85% 30%, 75% 85%, 50% 100%, 25% 85%, 15% 30%)",
+                    "linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 12%, #fef3c7 30%, #fde047 60%, #f59e0b 90%, transparent 100%)",
+                  clipPath: "polygon(50% 0%, 80% 25%, 72% 80%, 50% 100%, 28% 80%, 20% 25%)",
                   transformOrigin: "top center",
                 }}
-                animate={{ scaleY: [1, 1.12, 0.9, 1.06, 1] }}
+                animate={{ scaleY: [1, 1.14, 0.9, 1.06, 1] }}
                 transition={{ duration: 0.18, repeat: Infinity }}
               />
+              {/* nozzle hotspot */}
               <motion.div
                 style={{
-                  position: "absolute", top: "-6%", left: "34%", right: "34%", height: "22%",
+                  position: "absolute", top: "-4%", left: "30%", right: "30%", height: "18%",
                   background: "radial-gradient(ellipse, #ffffff 0%, #fef3c7 45%, transparent 80%)",
-                  filter: "blur(3px)",
+                  filter: "blur(4px)",
                 }}
                 animate={{ opacity: [0.9, 1, 0.85, 1] }}
                 transition={{ duration: 0.15, repeat: Infinity }}
