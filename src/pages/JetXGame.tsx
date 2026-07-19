@@ -319,10 +319,10 @@ const JetXGame = () => {
     { mode: "STAR", label: "★" },
   ];
 
-  // Rocket flight math — faster rise
-  const progress = phase === "flying" ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(8)) : 0;
-  const rocketBottomPct = phase === "crashed" ? 140 : 8 + progress * 62;
-  const flameHvh = phase === "flying" ? 5 + progress * 4 : phase === "betting" ? 3 : 2;
+  // Rocket flight math — very fast rise
+  const progress = phase === "flying" ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(4.5)) : 0;
+  const rocketBottomPct = phase === "crashed" ? 170 : 6 + progress * 78;
+  const flameHvh = phase === "flying" ? 6 + progress * 6 : phase === "betting" ? 3.5 : 2;
 
   // Drive smooth rocket bottom + thrust intensity when values change
   useEffect(() => { bottomMv.set(rocketBottomPct); }, [rocketBottomPct, bottomMv]);
