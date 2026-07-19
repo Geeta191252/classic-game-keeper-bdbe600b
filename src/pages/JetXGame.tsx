@@ -411,15 +411,15 @@ const JetXGame = () => {
             {/* Flame plume — compact soft glowing 3D plume */}
             <div
               className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: "92%", width: "40%", height: `${flameHvh}vh`, maxHeight: "32vh" }}
+              style={{ top: "92%", width: "28%", height: `${flameHvh}vh`, maxHeight: "18vh" }}
             >
               {/* wide ambient glow */}
               <motion.div
                 style={{
-                  position: "absolute", inset: "-10% -50% 5% -50%",
+                  position: "absolute", inset: "-5% -35% 5% -35%",
                   background:
-                    "radial-gradient(ellipse at 50% 15%, rgba(251,191,36,0.55) 0%, rgba(249,115,22,0.28) 30%, rgba(234,88,12,0.10) 55%, transparent 75%)",
-                  filter: "blur(16px)",
+                    "radial-gradient(ellipse at 50% 15%, rgba(251,191,36,0.45) 0%, rgba(249,115,22,0.22) 30%, rgba(234,88,12,0.08) 55%, transparent 75%)",
+                  filter: "blur(12px)",
                 }}
                 animate={{ opacity: [0.75, 1, 0.8, 1] }}
                 transition={{ duration: 0.35, repeat: Infinity }}
