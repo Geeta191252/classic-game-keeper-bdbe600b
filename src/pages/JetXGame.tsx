@@ -160,8 +160,8 @@ const JetXGame = () => {
 
   // Rocket flight math
   const progress = phase === "flying" ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(15)) : 0;
-  const rocketBottomPct = phase === "crashed" ? 130 : 6 + progress * 55;
-  const flameHvh = phase === "flying" ? 20 + progress * 14 : phase === "betting" ? 14 : 12;
+  const rocketBottomPct = phase === "crashed" ? 130 : 8 + progress * 48;
+  const flameHvh = phase === "flying" ? 24 + progress * 18 : phase === "betting" ? 16 : 14;
 
   return (
     <div
