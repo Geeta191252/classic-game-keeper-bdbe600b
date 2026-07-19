@@ -298,72 +298,87 @@ const JetXGame = () => {
             height={630}
           />
 
-          {/* Animated Rocket + Flame */}
+          {/* Animated Rocket + massive vertical Flame plume — matches reference */}
           {(() => {
-            // Rocket rises from bottom-center as multiplier grows
             const progress = phase === "flying"
-              ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(20))
+              ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(15))
               : 0;
-            const bottomPct = phase === "crashed"
-              ? 110
-              : 8 + progress * 55; // 8% -> 63% from bottom
-            const rotate = phase === "flying" ? -8 - progress * 6 : 0;
-            const flameScale = phase === "flying" ? 1 + progress * 0.6 : 0.9;
-            const rocketVisible = phase !== "betting" || true;
+            // Rocket rises from lower area up
+            const bottomPct = phase === "crashed" ? 120 : 8 + progress * 18;
+            const flameH = phase === "flying" ? 22 + progress * 10 : phase === "betting" ? 16 : 14;
             return (
               <motion.div
-                className="absolute left-1/2 pointer-events-none"
-                style={{ width: "34%", translateX: "-50%" }}
+                className="absolute pointer-events-none"
+                style={{ right: "6%", width: "32%" }}
                 animate={{
                   bottom: `${bottomPct}%`,
-                  rotate,
-                  x: phase === "flying" ? [0, -4, 4, -3, 0] : 0,
+                  x: phase === "flying" ? [0, -3, 3, -2, 0] : 0,
+                  y: phase !== "crashed" ? [0, -6, 0, 4, 0] : 0,
                 }}
                 transition={{
                   bottom: { duration: 0.4, ease: "linear" },
-                  rotate: { duration: 0.4, ease: "linear" },
-                  x: { duration: 0.5, repeat: Infinity, ease: "easeInOut" },
+                  x: { duration: 0.6, repeat: Infinity, ease: "easeInOut" },
+                  y: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
                 }}
               >
-                {/* Flame plume under rocket */}
-                {phase === "flying" && (
+                {/* Massive vertical flame column BELOW rocket */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2"
+                  style={{ top: "78%", width: "42%", height: `${flameH}vh`, maxHeight: "70vh" }}
+                >
+                  {/* outer smoke glow */}
                   <motion.div
-                    className="absolute left-1/2 -translate-x-1/2"
-                    style={{ top: "88%", width: "55%" }}
-                    animate={{ scaleY: [flameScale, flameScale * 1.15, flameScale * 0.95, flameScale] }}
-                    transition={{ duration: 0.18, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    {/* outer glow */}
-                    <div style={{
-                      position: "absolute", inset: "-20% -30% 0 -30%",
-                      background: "radial-gradient(ellipse at top, rgba(251,146,60,0.7), rgba(251,146,60,0) 70%)",
-                      filter: "blur(10px)",
-                      height: "260%",
-                    }} />
-                    {/* main flame */}
-                    <div style={{
-                      height: "230%",
-                      background: "linear-gradient(180deg, #fef08a 0%, #fbbf24 25%, #f97316 55%, #dc2626 85%, transparent 100%)",
-                      clipPath: "polygon(50% 0%, 90% 30%, 100% 70%, 75% 95%, 50% 100%, 25% 95%, 0% 70%, 10% 30%)",
-                      filter: "drop-shadow(0 0 12px #f97316)",
-                    }} />
-                    {/* inner white core */}
-                    <div style={{
-                      position: "absolute", top: 0, left: "25%", right: "25%",
-                      height: "140%",
-                      background: "linear-gradient(180deg, #ffffff 0%, #fef3c7 40%, #fbbf24 100%)",
-                      clipPath: "polygon(50% 0%, 85% 40%, 70% 90%, 50% 100%, 30% 90%, 15% 40%)",
-                    }} />
-                  </motion.div>
-                )}
-                {rocketVisible && (
-                  <img
-                    src={rocketImg}
-                    alt="rocket"
-                    className="relative w-full"
-                    style={{ filter: "drop-shadow(0 8px 20px rgba(0,0,0,0.7))" }}
+                    style={{
+                      position: "absolute", inset: "0 -60% 0 -60%",
+                      background: "radial-gradient(ellipse at top, rgba(251,146,60,0.55) 0%, rgba(234,88,12,0.25) 40%, transparent 75%)",
+                      filter: "blur(14px)",
+                    }}
+                    animate={{ opacity: [0.7, 1, 0.75, 1, 0.8] }}
+                    transition={{ duration: 0.25, repeat: Infinity }}
                   />
-                )}
+                  {/* main orange flame column */}
+                  <motion.div
+                    style={{
+                      position: "absolute", inset: 0,
+                      background: "linear-gradient(180deg, #fef08a 0%, #fbbf24 18%, #f97316 45%, #ea580c 70%, #b91c1c 88%, transparent 100%)",
+                      clipPath: "polygon(50% 0%, 88% 15%, 100% 45%, 92% 75%, 70% 95%, 50% 100%, 30% 95%, 8% 75%, 0% 45%, 12% 15%)",
+                      filter: "drop-shadow(0 0 20px rgba(249,115,22,0.9))",
+                    }}
+                    animate={{ scaleY: [1, 1.08, 0.95, 1.05, 1], scaleX: [1, 0.95, 1.03, 0.97, 1] }}
+                    transition={{ duration: 0.2, repeat: Infinity }}
+                  />
+                  {/* inner yellow core */}
+                  <motion.div
+                    style={{
+                      position: "absolute", top: 0, left: "22%", right: "22%", bottom: "20%",
+                      background: "linear-gradient(180deg, #ffffff 0%, #fef3c7 25%, #fde047 55%, #f59e0b 90%, transparent 100%)",
+                      clipPath: "polygon(50% 0%, 85% 30%, 75% 85%, 50% 100%, 25% 85%, 15% 30%)",
+                    }}
+                    animate={{ scaleY: [1, 1.1, 0.92, 1.05, 1] }}
+                    transition={{ duration: 0.18, repeat: Infinity }}
+                  />
+                  {/* white hot spot at nozzle */}
+                  <motion.div
+                    style={{
+                      position: "absolute", top: "-5%", left: "35%", right: "35%", height: "20%",
+                      background: "radial-gradient(ellipse, #ffffff 0%, #fef3c7 40%, transparent 75%)",
+                      filter: "blur(3px)",
+                    }}
+                    animate={{ opacity: [0.9, 1, 0.85, 1] }}
+                    transition={{ duration: 0.15, repeat: Infinity }}
+                  />
+                </div>
+
+                {/* Rocket — upright & large */}
+                <img
+                  src={rocketImg}
+                  alt="rocket"
+                  className="relative w-full block"
+                  style={{
+                    transform: "rotate(-12deg)",
+                    filter: "drop-shadow(0 12px 30px rgba(0,0,0,0.75)) drop-shadow(0 0 25px rgba(249,115,22,0.4))",
+                  }}
+                />
               </motion.div>
             );
           })()}
