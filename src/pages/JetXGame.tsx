@@ -14,6 +14,7 @@ import {
 } from "@/lib/telegram";
 import { GameCurrencyMode, modeToWallet, toNativeAmount, toDisplayAmount, currencySymbol } from "@/lib/gameCurrency";
 import rocketImg from "@/assets/jetx-rocket-v2.png";
+import bgNight from "@/assets/jetx-bg-night.jpg.asset.json";
 
 type Phase = "betting" | "flying" | "crashed";
 
@@ -171,34 +172,40 @@ const JetXGame = () => {
           "radial-gradient(ellipse at 20% 10%, #1a2a5a 0%, #0a0f24 40%, #04060f 100%)",
       }}
     >
-      {/* ── Animated deep-space background (edge-to-edge) ── */}
-      <div className="pointer-events-none absolute inset-0 z-0">
-        {/* Nebula wash */}
+      {/* ── Animated deep-space background (user photo, scrolling) ── */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        {/* Scrolling night-sky image (two stacked copies for seamless loop) */}
+        <div
+          className="absolute inset-x-0 top-0"
+          style={{
+            height: "200%",
+            backgroundImage: `url(${bgNight.url})`,
+            backgroundSize: "100% 50%",
+            backgroundRepeat: "repeat-y",
+            backgroundPosition: "center top",
+            animation: `jetx-bg-scroll ${phase === "flying" ? 10 : 45}s linear infinite`,
+            willChange: "transform",
+          }}
+        />
+        {/* Extra parallax star layer for depth */}
+        <div
+          className="absolute inset-0 jetx-stars opacity-70 mix-blend-screen"
+          style={{ animation: `jetx-stars-move ${phase === "flying" ? 8 : 30}s linear infinite` }}
+        />
+        {/* Soft nebula wash to blend rocket area */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(60% 45% at 75% 25%, rgba(120,80,220,0.35), transparent 60%), radial-gradient(50% 40% at 15% 75%, rgba(30,120,220,0.35), transparent 65%), radial-gradient(35% 30% at 60% 85%, rgba(236,72,153,0.22), transparent 70%)",
+              "radial-gradient(55% 40% at 50% 40%, rgba(80,60,180,0.18), transparent 70%)",
             animation: "jetx-nebula-drift 14s ease-in-out infinite",
-          }}
-        />
-        {/* Star layers */}
-        <div
-          className="absolute inset-0 jetx-stars opacity-90"
-          style={{ animation: `jetx-stars-move ${phase === "flying" ? 12 : 40}s linear infinite` }}
-        />
-        <div
-          className="absolute inset-0 jetx-stars opacity-50"
-          style={{
-            animation: `jetx-stars-move ${phase === "flying" ? 22 : 70}s linear infinite`,
-            filter: "blur(0.5px)",
-            transform: "scale(1.4)",
+            mixBlendMode: "screen",
           }}
         />
         {/* Vignette */}
         <div
           className="absolute inset-0"
-          style={{ background: "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.65) 100%)" }}
+          style={{ background: "radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.55) 100%)" }}
         />
       </div>
 
