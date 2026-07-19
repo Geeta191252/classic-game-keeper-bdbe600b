@@ -408,67 +408,86 @@ const JetXGame = () => {
                   "drop-shadow(0 20px 30px rgba(0,0,0,0.75)) drop-shadow(0 0 26px rgba(120,180,255,0.35)) drop-shadow(0 0 14px rgba(249,115,22,0.35))",
               }}
             />
-            {/* Flame plume — geometric beam like reference */}
+            {/* Flame plume — soft glowing 3D plume */}
             <div
               className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: "94%", width: "34%", height: `${flameHvh}vh`, maxHeight: "70vh" }}
+              style={{ top: "92%", width: "58%", height: `${flameHvh}vh`, maxHeight: "62vh" }}
             >
-              {/* soft ambient glow behind */}
+              {/* wide ambient glow */}
               <motion.div
                 style={{
-                  position: "absolute", inset: "-8% -120% 0 -120%",
+                  position: "absolute", inset: "-15% -80% 5% -80%",
                   background:
-                    "radial-gradient(ellipse at top, rgba(251,191,36,0.55) 0%, rgba(234,88,12,0.25) 30%, transparent 65%)",
-                  filter: "blur(28px)",
+                    "radial-gradient(ellipse at 50% 15%, rgba(251,191,36,0.65) 0%, rgba(249,115,22,0.35) 30%, rgba(234,88,12,0.15) 55%, transparent 75%)",
+                  filter: "blur(24px)",
                 }}
                 animate={{ opacity: [0.75, 1, 0.8, 1] }}
-                transition={{ duration: 0.3, repeat: Infinity }}
+                transition={{ duration: 0.35, repeat: Infinity }}
               />
-              {/* outer orange facet (left) */}
+              {/* outer orange plume */}
               <motion.div
                 style={{
                   position: "absolute", inset: 0,
-                  background: "linear-gradient(180deg, #fbbf24 0%, #f97316 55%, #ea580c 100%)",
-                  clipPath: "polygon(50% 0%, 100% 8%, 50% 100%, 0% 8%)",
-                  filter: "drop-shadow(0 0 24px rgba(249,115,22,0.9))",
+                  background:
+                    "radial-gradient(ellipse at 50% 8%, #fde68a 0%, #fbbf24 18%, #f97316 45%, #ea580c 72%, rgba(194,65,12,0) 100%)",
+                  clipPath: "polygon(50% 0%, 92% 12%, 100% 40%, 88% 72%, 62% 96%, 50% 100%, 38% 96%, 12% 72%, 0% 40%, 8% 12%)",
+                  filter: "blur(6px) drop-shadow(0 0 30px rgba(249,115,22,0.85))",
                   transformOrigin: "top center",
                 }}
-                animate={{ scaleY: [1, 1.06, 0.96, 1.04, 1] }}
-                transition={{ duration: 0.25, repeat: Infinity }}
+                animate={{ scaleY: [1, 1.08, 0.95, 1.05, 1], scaleX: [1, 0.97, 1.04, 0.98, 1] }}
+                transition={{ duration: 0.28, repeat: Infinity }}
               />
-              {/* mid yellow facet */}
+              {/* mid yellow plume */}
               <motion.div
                 style={{
-                  position: "absolute", top: 0, left: "14%", right: "14%", bottom: 0,
-                  background: "linear-gradient(180deg, #fef08a 0%, #fde047 45%, #fbbf24 100%)",
-                  clipPath: "polygon(50% 0%, 100% 6%, 50% 100%, 0% 6%)",
+                  position: "absolute", top: 0, left: "18%", right: "18%", bottom: "8%",
+                  background:
+                    "radial-gradient(ellipse at 50% 8%, #ffffff 0%, #fef9c3 15%, #fde047 40%, #fbbf24 70%, rgba(251,191,36,0) 100%)",
+                  clipPath: "polygon(50% 0%, 88% 15%, 96% 45%, 78% 78%, 55% 98%, 50% 100%, 45% 98%, 22% 78%, 4% 45%, 12% 15%)",
+                  filter: "blur(3px)",
                   transformOrigin: "top center",
                 }}
-                animate={{ scaleY: [1, 1.08, 0.94, 1.05, 1] }}
+                animate={{ scaleY: [1, 1.1, 0.94, 1.06, 1] }}
                 transition={{ duration: 0.22, repeat: Infinity }}
               />
               {/* bright white core */}
               <motion.div
                 style={{
-                  position: "absolute", top: 0, left: "34%", right: "34%", bottom: "12%",
-                  background: "linear-gradient(180deg, #ffffff 0%, #fef9c3 60%, rgba(253,224,71,0) 100%)",
-                  clipPath: "polygon(50% 0%, 100% 4%, 50% 100%, 0% 4%)",
-                  filter: "blur(1px)",
+                  position: "absolute", top: "-2%", left: "34%", right: "34%", bottom: "38%",
+                  background:
+                    "radial-gradient(ellipse at 50% 10%, #ffffff 0%, #fef3c7 45%, rgba(253,224,71,0) 100%)",
+                  filter: "blur(2px)",
                   transformOrigin: "top center",
                 }}
-                animate={{ scaleY: [1, 1.1, 0.92, 1.06, 1] }}
+                animate={{ scaleY: [1, 1.12, 0.9, 1.08, 1], opacity: [0.95, 1, 0.9, 1] }}
                 transition={{ duration: 0.18, repeat: Infinity }}
               />
               {/* nozzle hotspot */}
               <motion.div
                 style={{
-                  position: "absolute", top: "-6%", left: "20%", right: "20%", height: "14%",
+                  position: "absolute", top: "-8%", left: "26%", right: "26%", height: "16%",
                   background: "radial-gradient(ellipse, #ffffff 0%, #fef3c7 40%, transparent 75%)",
-                  filter: "blur(5px)",
+                  filter: "blur(6px)",
                 }}
                 animate={{ opacity: [0.9, 1, 0.85, 1] }}
                 transition={{ duration: 0.15, repeat: Infinity }}
               />
+              {/* falling sparks */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <motion.div
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    top: "20%",
+                    left: `${20 + i * 15}%`,
+                    width: 4, height: 4, borderRadius: "50%",
+                    background: "#fde047",
+                    boxShadow: "0 0 8px #fbbf24, 0 0 4px #ffffff",
+                  }}
+                  animate={{ y: [0, 60 + i * 10, 120], opacity: [1, 0.8, 0], x: [0, (i % 2 ? 8 : -8), (i % 2 ? 16 : -16)] }}
+                  transition={{ duration: 0.9 + i * 0.15, repeat: Infinity, delay: i * 0.18, ease: "easeOut" }}
+                />
+              ))}
             </div>
           </motion.div>
         </div>
