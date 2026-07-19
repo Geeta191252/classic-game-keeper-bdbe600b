@@ -87,6 +87,13 @@ const JetXGame = () => {
   const bottomSpring = useSpring(bottomMv, { stiffness: 55, damping: 18, mass: 1 });
   const bottomStyle = useTransform(bottomSpring, (v) => `${v}%`);
 
+  // ── Background + starfield speed tied to rocket/multiplier
+  const bgY = useMotionValue(0);
+  const starY = useMotionValue(0);
+  const bgPos = useTransform(bgY, (v) => `50% ${Math.max(0, 100 - v)}%`);
+  const starPos = useTransform(starY, (v) => `0 ${-v}px, 0 ${-v * 0.7}px, 0 ${-v * 0.45}px`);
+
+
   // ── Sound: continuous rocket thrust + crash boom (Web Audio)
   const audioRef = useRef<{
     ctx: AudioContext | null;
@@ -274,6 +281,38 @@ const JetXGame = () => {
     }
   }, [phase, startThrust, stopThrust, playCrash]);
 
+  // Continuous background scroll: speed scales with multiplier
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    const loop = (now: number) => {
+      const dt = (now - last) / 1000;
+      last = now;
+      if (phase === "flying") {
+        const starSpeed = 60 + multiplier * 35;
+        const bgSpeed = 2 + multiplier * 1.2;
+        const nextStar = (starY.get() + starSpeed * dt) % 2000;
+        starY.set(nextStar);
+        bgY.set(Math.min(100, bgY.get() + bgSpeed * dt));
+      } else {
+        const nextStar = (starY.get() + 2 * dt) % 2000;
+        starY.set(nextStar);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [phase, multiplier, bgY, starY]);
+
+  // Reset background position on new round
+  const lastBgPhaseRef = useRef<Phase>("betting");
+  useEffect(() => {
+    if (phase === "betting" && lastBgPhaseRef.current === "crashed") {
+      bgY.set(0);
+    }
+    lastBgPhaseRef.current = phase;
+  }, [phase, bgY]);
+
   return (
     <div
       className="min-h-screen w-full text-white select-none relative overflow-hidden"
@@ -378,23 +417,24 @@ const JetXGame = () => {
           className="relative overflow-hidden mx-3 rounded-[28px] jetx-glass-strong"
           style={{ aspectRatio: "9 / 11" }}
         >
-          {/* Scrolling varied space background (single tall image, no repeat, alternates direction) */}
-          <div
+          {/* Scrolling varied space background — speed tied to rocket */}
+          <motion.div
             className="absolute inset-0"
             style={{
               backgroundImage: `url(${bgNight.url})`,
               backgroundSize: "100% auto",
               backgroundRepeat: "no-repeat",
-              animation: `jetx-bg-pan ${phase === "flying" ? 40 : 120}s linear infinite alternate`,
+              backgroundPosition: bgPos,
               willChange: "background-position",
             }}
           />
 
-          {/* Inner star drift (parallax faster inside stage) */}
-          <div
+          {/* Inner star drift — speed tied to rocket */}
+          <motion.div
             className="absolute inset-0 jetx-stars opacity-60 mix-blend-screen"
-            style={{ animation: `jetx-stars-move ${phase === "flying" ? 6 : 30}s linear infinite` }}
+            style={{ backgroundPosition: starPos }}
           />
+
 
 
           {/* Round ID */}
