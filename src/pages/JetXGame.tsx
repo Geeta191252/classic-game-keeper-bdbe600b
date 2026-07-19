@@ -143,7 +143,7 @@ const JetXGame = () => {
 
   // ── Smooth rocket vertical position driven by spring (no per-poll jumps)
   const bottomMv = useMotionValue(8);
-  const bottomSpring = useSpring(bottomMv, { stiffness: 55, damping: 18, mass: 1 });
+  const bottomSpring = useSpring(bottomMv, { stiffness: 140, damping: 22, mass: 0.6 });
   const bottomStyle = useTransform(bottomSpring, (v) => `${v}%`);
 
   // ── Cloud parallax scroll (two layers, continuous, varied)
@@ -319,10 +319,10 @@ const JetXGame = () => {
     { mode: "STAR", label: "★" },
   ];
 
-  // Rocket flight math
-  const progress = phase === "flying" ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(15)) : 0;
-  const rocketBottomPct = phase === "crashed" ? 130 : 8 + progress * 48;
-  const flameHvh = phase === "flying" ? 4 + progress * 3 : phase === "betting" ? 3 : 2;
+  // Rocket flight math — faster rise
+  const progress = phase === "flying" ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(8)) : 0;
+  const rocketBottomPct = phase === "crashed" ? 140 : 8 + progress * 62;
+  const flameHvh = phase === "flying" ? 5 + progress * 4 : phase === "betting" ? 3 : 2;
 
   // Drive smooth rocket bottom + thrust intensity when values change
   useEffect(() => { bottomMv.set(rocketBottomPct); }, [rocketBottomPct, bottomMv]);
@@ -349,10 +349,10 @@ const JetXGame = () => {
     const loop = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
-      // Base idle drift + multiplier-driven boost
-      const boost = phase === "flying" ? 40 + multiplier * 55 : 18;
+      // Base idle drift + multiplier-driven boost (faster)
+      const boost = phase === "flying" ? 180 + multiplier * 140 : 45;
       const frontSpeed = boost;         // front layer faster
-      const backSpeed = boost * 0.45;   // back layer slower (parallax)
+      const backSpeed = boost * 0.5;    // back layer slower (parallax)
       // Positive Y offset = clouds move downward
       const nb = (cloudBackY.get() + backSpeed * dt) % TILE_BACK;
       const nf = (cloudFrontY.get() + frontSpeed * dt) % TILE_FRONT;
@@ -597,12 +597,10 @@ const JetXGame = () => {
             className="absolute pointer-events-none left-1/2"
             style={{ width: "34%", x: "-50%", bottom: bottomStyle }}
             animate={{
-              x: phase === "flying" ? ["-52%", "-48%", "-51%", "-49%", "-50%"] : "-50%",
-              y: phase === "betting" ? [0, -8, 0, 6, 0] : 0,
+              y: phase === "betting" ? [0, -8, 0, 6, 0] : phase === "flying" ? [0, -3, 0, 3, 0] : 0,
             }}
             transition={{
-              x: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
-              y: { duration: 2.4, repeat: Infinity, ease: "easeInOut" },
+              y: { duration: phase === "flying" ? 0.6 : 2.4, repeat: Infinity, ease: "easeInOut" },
             }}
           >
             <img
