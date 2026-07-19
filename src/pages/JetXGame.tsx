@@ -265,19 +265,25 @@ const JetXGame = () => {
           className="relative overflow-hidden mx-3 rounded-[28px] jetx-glass-strong"
           style={{ aspectRatio: "9 / 11" }}
         >
-          {/* Inner star drift (parallax faster inside stage) */}
+          {/* Scrolling night-sky background (stage only) */}
           <div
-            className="absolute inset-0 jetx-stars opacity-80"
-            style={{ animation: `jetx-stars-move ${phase === "flying" ? 6 : 30}s linear infinite` }}
-          />
-          {/* Aurora glow behind rocket */}
-          <div
-            className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none"
+            className="absolute inset-x-0 top-0"
             style={{
-              background:
-                "radial-gradient(60% 60% at 50% 100%, rgba(249,115,22,0.35), rgba(168,85,247,0.15) 45%, transparent 75%)",
+              height: "200%",
+              backgroundImage: `url(${bgNight.url})`,
+              backgroundSize: "100% 50%",
+              backgroundRepeat: "repeat-y",
+              backgroundPosition: "center top",
+              animation: `jetx-bg-scroll ${phase === "flying" ? 10 : 45}s linear infinite`,
+              willChange: "transform",
             }}
           />
+          {/* Inner star drift (parallax faster inside stage) */}
+          <div
+            className="absolute inset-0 jetx-stars opacity-60 mix-blend-screen"
+            style={{ animation: `jetx-stars-move ${phase === "flying" ? 6 : 30}s linear infinite` }}
+          />
+
 
           {/* Round ID */}
           <div className="absolute top-3 left-3 px-2.5 py-1 rounded-xl text-[10px] font-black jetx-glass">
