@@ -199,10 +199,10 @@ const JetXGame = () => {
   const setThrustIntensity = useCallback((mult: number) => {
     const a = audioRef.current;
     if (!a.ctx || !a.thrustFilter || !a.thrustGain) return;
-    const p = Math.min(1, Math.log(Math.max(1, mult)) / Math.log(20));
+    const p = Math.min(1, Math.log(Math.max(1, mult)) / Math.log(12));
     const t = a.ctx.currentTime;
-    a.thrustFilter.frequency.setTargetAtTime(600 + p * 2000, t, 0.15);
-    a.thrustGain.gain.setTargetAtTime(0.45 + p * 0.45, t, 0.2);
+    a.thrustFilter.frequency.setTargetAtTime(600 + p * 2200, t, 0.12);
+    a.thrustGain.gain.setTargetAtTime(0.5 + p * 0.55, t, 0.15);
   }, []);
 
   const stopThrust = useCallback(() => {
