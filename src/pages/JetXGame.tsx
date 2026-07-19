@@ -15,6 +15,7 @@ import {
 import { GameCurrencyMode, modeToWallet, toNativeAmount, toDisplayAmount, currencySymbol } from "@/lib/gameCurrency";
 import rocketImg from "@/assets/jetx-rocket.png";
 import spaceBg from "@/assets/jetx-space-bg.jpg";
+import stageRef from "@/assets/jetx-stage.png.asset.json";
 
 type Phase = "betting" | "flying" | "crashed";
 
@@ -286,14 +287,31 @@ const JetXGame = () => {
           style={{
             border: "1px solid rgba(255,255,255,0.08)",
             boxShadow: "0 8px 0 #000, inset 0 1px 0 rgba(255,255,255,0.08)",
-            aspectRatio: "1 / 1.05",
+            aspectRatio: "973 / 630",
           }}>
-          {/* Space bg */}
-          <img src={spaceBg} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" width={1024} height={768} />
-          <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,0.6) 100%)" }} />
+          {/* Baked reference stage: space + rocket + clouds + flame (exact copy) */}
+          <motion.img
+            src={stageRef.url}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            animate={
+              phase === "flying"
+                ? { y: [0, -3, 0, 2, 0], scale: [1, 1.005, 1] }
+                : phase === "crashed"
+                ? { y: [0, 8, 16], opacity: [1, 0.7, 0.5] }
+                : { y: 0, scale: 1 }
+            }
+            transition={
+              phase === "flying"
+                ? { duration: 0.4, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.6, ease: "easeOut" }
+            }
+            width={973}
+            height={630}
+          />
 
-          {/* Round ID */}
-          <div className="absolute top-2 left-2 px-2.5 py-1 rounded-xl text-[10px] font-black"
+          {/* Round ID — overlays baked one (top-left) */}
+          <div className="absolute top-[3%] left-[3%] px-2.5 py-1 rounded-xl text-[10px] font-black"
             style={{
               background: "linear-gradient(180deg,#0b1220,#000)",
               border: "1px solid rgba(34,197,94,0.4)",
@@ -303,8 +321,8 @@ const JetXGame = () => {
             <div className="text-green-300">#{100000 + roundNumber}</div>
           </div>
 
-          {/* Players */}
-          <div className="absolute top-2 right-2 px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5"
+          {/* Players — overlays baked one (top-right) */}
+          <div className="absolute top-[3%] right-[3%] px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1.5"
             style={{
               background: "linear-gradient(180deg,#0b1220,#000)",
               border: "1px solid rgba(255,255,255,0.1)",
@@ -317,104 +335,14 @@ const JetXGame = () => {
             </div>
           </div>
 
-          {/* Rocket — right side, rising vertically with big flame, matches reference */}
-          <AnimatePresence>
-            {phase !== "crashed" && (
-              <motion.div
-                key="rocket-wrap"
-                className="absolute pointer-events-none"
-                initial={{ opacity: 0, bottom: "18%", right: "18%" }}
-                animate={{
-                  opacity: 1,
-                  bottom: phase === "flying"
-                    ? `${Math.min(48, 20 + Math.log(multiplier + 1) * 14)}%`
-                    : "20%",
-                  right: "18%",
-                }}
-                exit={{ opacity: 0, y: -320, transition: { duration: 0.6 } }}
-                transition={{ type: "tween", ease: "linear", duration: 0.6 }}
-                style={{ width: "38%" }}
-              >
-                {/* Rocket body */}
-                <motion.img
-                  src={rocketImg}
-                  alt=""
-                  className="w-full block relative z-10"
-                  animate={{ y: [0, -3, 0], x: [-1, 1, -1] }}
-                  transition={{ duration: 0.4, repeat: Infinity, ease: "easeInOut" }}
-                  style={{ filter: "drop-shadow(0 0 24px rgba(255,180,60,0.6))" }}
-                  width={768}
-                  height={1024}
-                />
-
-                {/* Big vertical flame plume shooting down from rocket bottom */}
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-                  style={{ top: "82%", width: "60%", height: "340px" }}
-                >
-                  {/* Outer smoke halo */}
-                  <motion.div
-                    className="absolute inset-0"
-                    style={{
-                      background: "radial-gradient(ellipse 55% 40% at 50% 10%, rgba(255,140,40,0.6), rgba(120,60,20,0.25) 45%, transparent 75%)",
-                      filter: "blur(16px)",
-                    }}
-                    animate={{ scale: [1, 1.1, 1], opacity: [0.65, 1, 0.65] }}
-                    transition={{ duration: 0.5, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  {/* Main flame body */}
-                  <motion.div
-                    className="absolute left-1/2 -translate-x-1/2"
-                    style={{
-                      top: 0,
-                      width: "55%",
-                      height: "100%",
-                      background: "linear-gradient(180deg, rgba(255,240,150,1) 0%, rgba(255,180,40,0.95) 22%, rgba(255,100,20,0.85) 48%, rgba(220,60,10,0.55) 72%, rgba(120,40,10,0.15) 92%, transparent 100%)",
-                      borderRadius: "50% 50% 40% 40% / 18% 18% 82% 82%",
-                      filter: "blur(4px)",
-                    }}
-                    animate={{ scaleY: [1, 1.18, 0.94, 1.12, 1], scaleX: [1, 0.9, 1.06, 0.94, 1] }}
-                    transition={{ duration: 0.35, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  {/* Bright inner core */}
-                  <motion.div
-                    className="absolute left-1/2 -translate-x-1/2"
-                    style={{
-                      top: 0,
-                      width: "26%",
-                      height: "78%",
-                      background: "linear-gradient(180deg, #ffffff 0%, #fff5c8 15%, #ffd166 40%, #ff8a1f 72%, transparent 100%)",
-                      borderRadius: "50% 50% 40% 40% / 15% 15% 85% 85%",
-                      filter: "blur(2px)",
-                    }}
-                    animate={{ scaleY: [1, 1.22, 0.9, 1.12, 1], opacity: [0.9, 1, 0.85, 1, 0.9] }}
-                    transition={{ duration: 0.28, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                  {/* Hot white spot at nozzle */}
-                  <motion.div
-                    className="absolute left-1/2 -translate-x-1/2 rounded-full"
-                    style={{
-                      top: "-3%",
-                      width: "36%",
-                      height: "16%",
-                      background: "radial-gradient(circle, #ffffff 0%, #fff2a8 35%, rgba(255,180,40,0.6) 70%, transparent 100%)",
-                      filter: "blur(2px)",
-                    }}
-                    animate={{ scale: [1, 1.18, 1], opacity: [0.85, 1, 0.85] }}
-                    transition={{ duration: 0.25, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Multiplier — pinned to left side, doesn't overlap rocket */}
-          <div className="absolute inset-y-0 left-0 w-1/2 flex flex-col items-center justify-center pointer-events-none pl-2">
+          {/* Live multiplier — covers the baked "4.35x FLYING HIGH" text exactly */}
+          <div className="absolute pointer-events-none"
+            style={{ top: "26%", left: "8%", width: "42%" }}>
             <AnimatePresence mode="wait">
               {phase === "betting" && (
-                <motion.div key="b" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center">
-                  <div className="text-[10px] text-white/60 uppercase tracking-[0.2em] mb-2">Next round in</div>
-                  <div className="text-[76px] font-black leading-none italic"
+                <motion.div key="b" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                  <div className="text-[9px] text-white/70 uppercase tracking-[0.2em] mb-1 font-black">Next round in</div>
+                  <div className="text-[64px] font-black leading-none italic"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#fde047,#eab308,#a16207)",
@@ -425,14 +353,16 @@ const JetXGame = () => {
                 </motion.div>
               )}
               {phase === "flying" && (
-                <motion.div key="f" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-                  <div className="text-[60px] font-black leading-none italic"
+                <motion.div key="f" initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                  {/* Solid black plate to mask the baked "4.35x" behind live value */}
+                  <div className="text-[54px] font-black leading-none italic"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#fef08a,#eab308,#854d0e)",
                       WebkitBackgroundClip: "text",
                       WebkitTextFillColor: "transparent",
-                      filter: "drop-shadow(0 5px 0 #451a03) drop-shadow(0 0 30px rgba(250,204,21,0.7))",
+                      filter: "drop-shadow(0 5px 0 #451a03) drop-shadow(0 0 24px rgba(250,204,21,0.9)) drop-shadow(0 0 6px #000) drop-shadow(0 0 6px #000)",
+                      WebkitTextStroke: "1px rgba(0,0,0,0.6)",
                     }}>{multiplier.toFixed(2)}x</div>
                   <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black text-green-100"
                     style={{
@@ -444,24 +374,21 @@ const JetXGame = () => {
                 </motion.div>
               )}
               {phase === "crashed" && (
-                <motion.div key="c" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
+                <motion.div key="c" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                   <div className="text-[10px] text-red-300 font-black uppercase tracking-[0.2em] mb-1">💥 Crashed</div>
-                  <div className="text-[64px] font-black italic leading-none"
+                  <div className="text-[54px] font-black italic leading-none"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#fca5a5,#ef4444,#7f1d1d)",
                       WebkitBackgroundClip: "text",
                       WebkitTextFillColor: "transparent",
-                      filter: "drop-shadow(0 4px 0 #450a0a) drop-shadow(0 0 30px rgba(239,68,68,0.7))",
+                      filter: "drop-shadow(0 4px 0 #450a0a) drop-shadow(0 0 24px rgba(239,68,68,0.9)) drop-shadow(0 0 6px #000) drop-shadow(0 0 6px #000)",
+                      WebkitTextStroke: "1px rgba(0,0,0,0.6)",
                     }}>{(crashAt ?? multiplier).toFixed(2)}x</div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-
-          {/* Bottom clouds gradient */}
-          <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none"
-            style={{ background: "linear-gradient(180deg,transparent,rgba(30,20,60,0.6),rgba(0,0,0,0.9))" }} />
         </div>
       </div>
 
