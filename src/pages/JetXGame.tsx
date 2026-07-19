@@ -417,23 +417,24 @@ const JetXGame = () => {
           className="relative overflow-hidden mx-3 rounded-[28px] jetx-glass-strong"
           style={{ aspectRatio: "9 / 11" }}
         >
-          {/* Scrolling varied space background (single tall image, no repeat, alternates direction) */}
-          <div
+          {/* Scrolling varied space background — speed tied to rocket */}
+          <motion.div
             className="absolute inset-0"
             style={{
               backgroundImage: `url(${bgNight.url})`,
               backgroundSize: "100% auto",
               backgroundRepeat: "no-repeat",
-              animation: `jetx-bg-pan ${phase === "flying" ? 40 : 120}s linear infinite alternate`,
+              backgroundPosition: bgPos,
               willChange: "background-position",
             }}
           />
 
-          {/* Inner star drift (parallax faster inside stage) */}
-          <div
+          {/* Inner star drift — speed tied to rocket */}
+          <motion.div
             className="absolute inset-0 jetx-stars opacity-60 mix-blend-screen"
-            style={{ animation: `jetx-stars-move ${phase === "flying" ? 6 : 30}s linear infinite` }}
+            style={{ backgroundPosition: starPos }}
           />
+
 
 
           {/* Round ID */}
