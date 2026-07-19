@@ -468,23 +468,49 @@ const JetXGame = () => {
           className="relative overflow-hidden mx-3 rounded-[28px] jetx-glass-strong"
           style={{ aspectRatio: "9 / 11" }}
         >
-          {/* Scrolling varied space background — speed tied to rocket */}
+          {/* Solid blue night sky base */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg,#0b1a5e 0%,#0d2585 40%,#0a1f6b 75%,#061344 100%)",
+            }}
+          />
+
+          {/* Back cloud layer (slow parallax, purple haze + stars) */}
           <motion.div
             className="absolute inset-0"
             style={{
-              backgroundImage: `url(${bgNight.url})`,
+              backgroundImage: `url("${CLOUDS_BACK}")`,
               backgroundSize: "100% auto",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: bgPos,
+              backgroundRepeat: "repeat-y",
+              backgroundPosition: cloudBackPos,
+              willChange: "background-position",
+              opacity: 0.85,
+            }}
+          />
+
+          {/* Front cloud layer (fast, cartoon white/pink puffs) */}
+          <motion.div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url("${CLOUDS_FRONT}")`,
+              backgroundSize: "100% auto",
+              backgroundRepeat: "repeat-y",
+              backgroundPosition: cloudFrontPos,
               willChange: "background-position",
             }}
           />
 
-          {/* Inner star drift — speed tied to rocket */}
-          <motion.div
-            className="absolute inset-0 jetx-stars opacity-60 mix-blend-screen"
-            style={{ backgroundPosition: starPos }}
+          {/* Subtle vignette for depth */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(0,0,0,0.35) 100%)",
+            }}
           />
+
 
 
 
