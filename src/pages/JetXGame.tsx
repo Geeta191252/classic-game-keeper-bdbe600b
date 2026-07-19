@@ -597,12 +597,10 @@ const JetXGame = () => {
             className="absolute pointer-events-none left-1/2"
             style={{ width: "34%", x: "-50%", bottom: bottomStyle }}
             animate={{
-              x: phase === "flying" ? ["-52%", "-48%", "-51%", "-49%", "-50%"] : "-50%",
-              y: phase === "betting" ? [0, -8, 0, 6, 0] : 0,
+              y: phase === "betting" ? [0, -8, 0, 6, 0] : phase === "flying" ? [0, -3, 0, 3, 0] : 0,
             }}
             transition={{
-              x: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
-              y: { duration: 2.4, repeat: Infinity, ease: "easeInOut" },
+              y: { duration: phase === "flying" ? 0.6 : 2.4, repeat: Infinity, ease: "easeInOut" },
             }}
           >
             <img
