@@ -161,7 +161,7 @@ const JetXGame = () => {
   // Rocket flight math
   const progress = phase === "flying" ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(15)) : 0;
   const rocketBottomPct = phase === "crashed" ? 130 : 8 + progress * 48;
-  const flameHvh = phase === "flying" ? 8 + progress * 6 : phase === "betting" ? 5 : 4;
+  const flameHvh = phase === "flying" ? 4 + progress * 3 : phase === "betting" ? 3 : 2;
 
   return (
     <div
@@ -387,11 +387,11 @@ const JetXGame = () => {
           {/* Rocket + flame */}
           <motion.div
             className="absolute pointer-events-none left-1/2"
-            style={{ width: "46%", x: "-50%" }}
+            style={{ width: "34%", x: "-50%" }}
             animate={{
               bottom: `${rocketBottomPct}%`,
               x: phase === "flying" ? ["-52%", "-48%", "-51%", "-49%", "-50%"] : "-50%",
-              y: phase === "betting" ? [0, -10, 0, 8, 0] : 0,
+              y: phase === "betting" ? [0, -8, 0, 6, 0] : 0,
             }}
             transition={{
               bottom: { duration: 0.35, ease: "linear" },
@@ -405,13 +405,13 @@ const JetXGame = () => {
               className="w-full block relative"
               style={{
                 filter:
-                  "drop-shadow(0 20px 30px rgba(0,0,0,0.75)) drop-shadow(0 0 26px rgba(120,180,255,0.35)) drop-shadow(0 0 14px rgba(249,115,22,0.35))",
+                  "drop-shadow(0 16px 24px rgba(0,0,0,0.75)) drop-shadow(0 0 18px rgba(120,180,255,0.35)) drop-shadow(0 0 10px rgba(249,115,22,0.35))",
               }}
             />
             {/* Flame plume — compact soft glowing 3D plume */}
             <div
               className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: "92%", width: "28%", height: `${flameHvh}vh`, maxHeight: "18vh" }}
+              style={{ top: "92%", width: "16%", height: `${flameHvh}vh`, maxHeight: "12vh" }}
             >
               {/* wide ambient glow */}
               <motion.div
