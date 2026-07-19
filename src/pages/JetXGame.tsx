@@ -431,7 +431,7 @@ const JetXGame = () => {
                   background:
                     "radial-gradient(ellipse at 50% 8%, #fde68a 0%, #fbbf24 18%, #f97316 45%, #ea580c 72%, rgba(194,65,12,0) 100%)",
                   clipPath: "polygon(50% 0%, 92% 12%, 100% 40%, 88% 72%, 62% 96%, 50% 100%, 38% 96%, 12% 72%, 0% 40%, 8% 12%)",
-                  filter: "blur(6px) drop-shadow(0 0 30px rgba(249,115,22,0.85))",
+                  filter: "blur(5px) drop-shadow(0 0 18px rgba(249,115,22,0.65))",
                   transformOrigin: "top center",
                 }}
                 animate={{ scaleY: [1, 1.08, 0.95, 1.05, 1], scaleX: [1, 0.97, 1.04, 0.98, 1] }}
