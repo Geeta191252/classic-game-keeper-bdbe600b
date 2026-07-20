@@ -154,7 +154,7 @@ const HomeScreen = () => {
     { id: "twist", name: "Twist Rings", image: gameTwist, category: "Originals", tab: "originals", badge: "HOT", badgeColor: "#ef4444", action: goToTwist },
     { id: "aviator-fun", name: "Aviator Fun", image: gameAviator, category: "Crash", tab: "crash", badge: "TURBO", badgeColor: "#f97316", action: goToAviatorFun },
     { id: "aviator", name: "Aviator Real", image: gameAviator, category: "Crash", tab: "crash", badge: "POPULAR", badgeColor: "#ec4899", action: goToAviator },
-    { id: "jetx", name: "JetX", image: gameAviator, category: "Crash", tab: "crash", badge: "3D", badgeColor: "#eab308", action: goToJetX },
+    { id: "jetx", name: "JetX", image: jetxLogo.url, category: "Crash", tab: "crash", badge: "3D", badgeColor: "#eab308", action: goToJetX },
     { id: "chicken-road", name: "Chicken Road", image: gameChickenRoad, category: "Crash", tab: "crash", badge: "POPULAR", badgeColor: "#ec4899", action: goToChickenRoad },
     { id: "chicken-classic", name: "Chicken Classic", image: gameChickenRoad, category: "Crash", tab: "crash", badge: "CLASSIC", badgeColor: "#6366f1", action: goToChickenClassic },
     { id: "plinko", name: "Plinko Pegs", image: gamePlinko, category: "Slots", tab: "slots", badge: "EASY", badgeColor: "#10b981", action: goToPlinko },
