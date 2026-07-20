@@ -168,7 +168,6 @@ const AviatorFunGame = () => {
   // Settings
   const [roundSpeedMultiplier, setRoundSpeedMultiplier] = useState(1.0);
   const [enableAutoRefill, setEnableAutoRefill] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
 
   // Modals & Menu
   const [isMenuOpen, setIsMenuOpen] = useState(false);
