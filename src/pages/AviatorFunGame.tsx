@@ -251,13 +251,6 @@ const AviatorFunGame = () => {
     // Real balance does not auto-refill
   }, [balance, currency, enableAutoRefill]);
 
-  // sound toggle helper
-  const handleSoundToggle = () => {
-    audioRef.current.init();
-    const muted = audioRef.current.toggleMute();
-    setIsMuted(muted);
-  };
-
   // Deposit Submit
   const handleDepositSubmit = () => {
     toast.error("Please add funds through Telegram wallet invoices.");
