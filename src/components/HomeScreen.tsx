@@ -43,17 +43,17 @@ interface GameTileProps {
 }
 
 // Thunderpick-styled vertical rectangle game card
-const GameTile = ({ image, name, category, badge, badgeColor, onClick }: GameTileProps) => (
+const GameTile = ({ image, name, category, badge, badgeColor, fit = "cover", onClick }: GameTileProps) => (
   <motion.div
     whileTap={{ scale: 0.95 }}
     onClick={onClick}
     className="cursor-pointer group flex-shrink-0 w-[115px] sm:w-[130px] flex flex-col bg-[#141b2b] rounded-xl overflow-hidden border border-white/[0.02] hover:border-white/[0.08] transition-all duration-200"
   >
-    <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#0d121f]">
+    <div className={`relative aspect-[3/4] w-full overflow-hidden ${fit === "contain" ? "bg-black" : "bg-[#0d121f]"}`}>
       <img 
         src={image} 
         alt={name} 
-        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+        className={`w-full h-full ${fit === "contain" ? "object-contain" : "object-cover"} transition-transform duration-300 group-hover:scale-105`} 
       />
       {badge && (
         <span
