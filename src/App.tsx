@@ -160,6 +160,7 @@ const App = () => {
                     <Route path="users" element={<AdminPages.Users />} />
                     <Route path="games" element={<AdminPages.Games />} />
                     <Route path="aviator-fun" element={<AdminPages.AviatorFun />} />
+                    <Route path="jetx" element={<AdminPages.JetX />} />
                     <Route path="deposits" element={<AdminPages.Deposits />} />
                     <Route path="withdrawals" element={<AdminPages.Withdrawals />} />
                     <Route path="wallet-adjust" element={<AdminPages.WalletAdjust />} />
