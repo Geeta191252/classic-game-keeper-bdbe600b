@@ -42,14 +42,29 @@ function getWebAppUrl(suffix = "") {
   return `${getWebAppBaseUrl()}${suffix}`;
 }
 
+// Extra promotional buttons (configured via Koyeb env)
+// EXTRA_BTN_1_TEXT / EXTRA_BTN_1_URL ... up to _3_
+function getExtraButtonRows() {
+  const rows = [];
+  for (let i = 1; i <= 3; i++) {
+    const text = process.env[`EXTRA_BTN_${i}_TEXT`];
+    const url = process.env[`EXTRA_BTN_${i}_URL`];
+    if (text && url && /^https:\/\//i.test(url)) {
+      rows.push([{ text, url }]);
+    }
+  }
+  return rows;
+}
+
 async function sendWebAppMessage(chatId, text, buttonText, url, options = {}) {
   const safeUrl = normalizeHttpsUrl(url, getWebAppBaseUrl());
+  const extras = getExtraButtonRows();
   try {
     return await bot.sendMessage(chatId, text, {
       ...options,
       disable_web_page_preview: true,
       reply_markup: {
-        inline_keyboard: [[{ text: buttonText, web_app: { url: safeUrl } }]],
+        inline_keyboard: [[{ text: buttonText, web_app: { url: safeUrl } }], ...extras],
       },
     });
   } catch (error) {
@@ -59,7 +74,7 @@ async function sendWebAppMessage(chatId, text, buttonText, url, options = {}) {
         ...options,
         disable_web_page_preview: true,
         reply_markup: {
-          inline_keyboard: [[{ text: buttonText, url: safeUrl }]],
+          inline_keyboard: [[{ text: buttonText, url: safeUrl }], ...extras],
         },
       });
     } catch (err2) {
@@ -67,6 +82,19 @@ async function sendWebAppMessage(chatId, text, buttonText, url, options = {}) {
       return bot.sendMessage(chatId, text, { ...options, disable_web_page_preview: true });
     }
   }
+}
+
+async function sendChannelWithButtons(chatId, text, playUrl, options = {}) {
+  const safePlay = normalizeHttpsUrl(playUrl, getWebAppBaseUrl());
+  const extras = getExtraButtonRows();
+  return bot.sendMessage(chatId, text, {
+    parse_mode: "Markdown",
+    disable_web_page_preview: true,
+    ...options,
+    reply_markup: {
+      inline_keyboard: [[{ text: "🎮 PLAY GAME 🕹️", url: safePlay }], ...extras],
+    },
+  });
 }
 
 // Middleware
