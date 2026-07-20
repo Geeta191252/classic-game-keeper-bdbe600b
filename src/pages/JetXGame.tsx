@@ -586,7 +586,7 @@ const JetXGame = () => {
                 <motion.div key="c" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                   <div className="text-[10px] text-red-300 font-black uppercase tracking-[0.28em] mb-1">💥 Crashed</div>
                   <div
-                    className="text-[74px] font-black italic leading-none"
+                    className="text-[52px] font-black italic leading-none"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#fecaca,#ef4444,#7f1d1d)",
