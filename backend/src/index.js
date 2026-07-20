@@ -4419,6 +4419,13 @@ try {
   console.error("❌ Failed to mount Aviator Fun:", err);
 }
 
+// ============================================
+// SPA catch-all — MUST be last so /api/* routes above take priority
+// ============================================
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
 
 // ============================================
 // Start server
