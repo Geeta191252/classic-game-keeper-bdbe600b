@@ -475,8 +475,8 @@ const JetXGame = () => {
       {/* ── STAGE (edge-to-edge) ── */}
       <div className="relative z-10 mt-2">
         <div
-          className="relative overflow-hidden mx-3 rounded-[28px] jetx-glass-strong"
-          style={{ aspectRatio: "9 / 11" }}
+          className="relative overflow-hidden mx-3 rounded-[22px] jetx-glass-strong"
+          style={{ aspectRatio: "9 / 8" }}
         >
           {/* Solid blue night sky base */}
           <div
