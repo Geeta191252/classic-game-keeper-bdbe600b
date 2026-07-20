@@ -280,6 +280,41 @@ export const resetAviatorFunLedger = (currency: AviatorFunCurrency) =>
     body: JSON.stringify({ currency }),
   });
 
+// ---------- JetX Controls (mirrors Aviator Fun API) ----------
+export type JetXCurrency = AviatorFunCurrency;
+export interface JetXPoolOverview extends Omit<AviatorFunPoolOverview, "bets"> {
+  bets: Array<{ key: string; userId: number; firstName?: string; amount: number; cashedOutAt: number | null; winAmount: number }>;
+}
+export interface JetXOverview { overview: Record<JetXCurrency, JetXPoolOverview>; }
+
+export const getJetXOverview = () => adminFetch<JetXOverview>("/admin/jetx/overview");
+export const getJetXProfit = () => adminFetch<{ percent: number }>("/admin/jetx/profit");
+export const setJetXProfit = (percent: number) =>
+  adminFetch<{ success: true; percent: number }>("/admin/jetx/profit", {
+    method: "POST", body: JSON.stringify({ percent }),
+  });
+export const addJetXManual = (currency: JetXCurrency, value: number) =>
+  adminFetch<{ success: true; queue: number[] }>("/admin/jetx/manual/add", {
+    method: "POST", body: JSON.stringify({ currency, value }),
+  });
+export const removeJetXManual = (currency: JetXCurrency, index: number) =>
+  adminFetch<{ success: true; queue: number[] }>("/admin/jetx/manual/remove", {
+    method: "POST", body: JSON.stringify({ currency, index }),
+  });
+export const clearJetXManual = (currency: JetXCurrency) =>
+  adminFetch<{ success: true }>("/admin/jetx/manual/clear", {
+    method: "POST", body: JSON.stringify({ currency }),
+  });
+export const forceCrashJetX = (currency: JetXCurrency) =>
+  adminFetch<{ success: true; crashAt: number }>("/admin/jetx/force-crash", {
+    method: "POST", body: JSON.stringify({ currency }),
+  });
+export const resetJetXLedger = (currency: JetXCurrency) =>
+  adminFetch<{ success: true }>("/admin/jetx/reset-ledger", {
+    method: "POST", body: JSON.stringify({ currency }),
+  });
+
+
 // ---------- Deposit / Withdraw Limits ----------
 export interface LimitsConfig {
   inr: { depositMin: number; withdrawMin: number };
