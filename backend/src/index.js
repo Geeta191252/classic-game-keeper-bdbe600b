@@ -3168,6 +3168,27 @@ app.post("/api/jetx/cashout", async (req, res) => {
     const win = Number((bet.amount * 0.98 * mult).toFixed(2));
     bet.cashedOutAt = mult;
     bet.winAmount = win;
+    s.totalPaidOut = (s.totalPaidOut || 0) + win;
+    s.cumPaid = (s.cumPaid || 0) + win;
+
+    // If this cashout blows the house budget, tighten finalCrash so remaining bets
+    // cannot push owner profit below the configured percentage.
+    if (!s.manualOverride) {
+      const profitPct = s.profitPct || (await jetxGetProfitPercent());
+      const cumBudget = (s.cumPool || 0) * (1 - profitPct / 100);
+      const remainingBudget = Math.max(0, cumBudget - (s.cumPaid || 0));
+      const remainingBetSum = Object.values(s.bets)
+        .filter((b) => !b.cashedOutAt)
+        .reduce((a, b) => a + b.amount, 0);
+      if (remainingBetSum > 0) {
+        const dynCap = remainingBudget / (remainingBetSum * 0.98);
+        const target = Math.max(1.0, Number(dynCap.toFixed(2)));
+        if (target < s.finalCrash) s.finalCrash = target;
+      } else if (remainingBudget <= 0) {
+        // Nothing left, cap at current mult so round ends
+        s.finalCrash = Math.max(1.0, Number(mult.toFixed(2)));
+      }
+    }
 
     const user = await getOrCreateUser(numericId);
     const { winningField: winField } = getCurrencyFields(curr);
