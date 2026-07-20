@@ -432,6 +432,20 @@ app.post("/api/admin/approve-withdrawal", async (req, res) => {
       console.error("Failed to send approval notification:", botErr.message);
     }
 
+    try {
+      const amount = Math.abs(tx.amount);
+      const symbol = tx.currency === "dollar" ? "$" : tx.currency === "rupee" ? "₹" : "⭐";
+      await bot.sendMessage(WITHDRAWAL_CHANNEL,
+        `✅ *Withdrawal Paid*\n\n` +
+        `💰 Amount: ${symbol}${amount}\n` +
+        `🔗 Network: ${tx.withdrawalNetwork || "N/A"}\n` +
+        `📍 Address: \`${tx.cryptoAddress}\``,
+        { parse_mode: "Markdown", disable_web_page_preview: true }
+      );
+    } catch (channelErr) {
+      console.error("Failed to post withdrawal approval to channel:", channelErr?.response?.body?.description || channelErr.message);
+    }
+
     return res.json({ success: true, message: "Withdrawal approved and user notified" });
   } catch (error) {
     console.error("Approve withdrawal error:", error);
