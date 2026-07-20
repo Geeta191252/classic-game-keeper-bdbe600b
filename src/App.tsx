@@ -84,8 +84,7 @@ const StartParamNavigator = () => {
   return null;
 };
 
-// Prefetch game chunks sequentially after idle so clicks feel instant
-// without jamming the main thread / network on slow devices.
+// Prefetch ALL game chunks in parallel immediately so any click opens instantly.
 const prefetchGames = () => {
   const loaders: Array<() => Promise<unknown>> = [
     () => import("./pages/AviatorGame"),
@@ -102,16 +101,15 @@ const prefetchGames = () => {
     () => import("./pages/TwistGame"),
     () => import("./pages/GoblinTower"),
   ];
-  const runNext = (i: number) => {
-    if (i >= loaders.length) return;
-    loaders[i]().finally(() => setTimeout(() => runNext(i + 1), 400));
+  const start = () => {
+    // Fire all in parallel — browser handles queuing; chunks are small and cached.
+    loaders.forEach((l) => { try { l().catch(() => {}); } catch { /* noop */ } });
   };
-  const start = () => runNext(0);
   const ric = (window as any).requestIdleCallback as
     | ((cb: () => void, opts?: { timeout: number }) => number)
     | undefined;
-  if (ric) ric(start, { timeout: 4000 });
-  else setTimeout(start, 2000);
+  if (ric) ric(start, { timeout: 1000 });
+  else setTimeout(start, 150);
 };
 
 const RouteFallback = () => (
