@@ -605,9 +605,9 @@ const JetXGame = () => {
           {/* Rocket + flame */}
           <motion.div
             className="absolute pointer-events-none left-1/2"
-            style={{ width: "34%", x: "-50%", bottom: bottomStyle }}
+            style={{ width: "26%", x: "-50%", bottom: bottomStyle }}
             animate={{
-              y: phase === "betting" ? [0, -8, 0, 6, 0] : phase === "flying" ? [0, -3, 0, 3, 0] : 0,
+              y: phase === "betting" ? [0, -6, 0, 4, 0] : phase === "flying" ? [0, -2, 0, 2, 0] : 0,
             }}
             transition={{
               y: { duration: phase === "flying" ? 0.6 : 2.4, repeat: Infinity, ease: "easeInOut" },
@@ -616,10 +616,14 @@ const JetXGame = () => {
             <img
               src={rocketImg}
               alt="rocket"
+              loading="eager"
+              decoding="async"
+              // @ts-expect-error non-standard but supported
+              fetchpriority="high"
               className="w-full block relative"
               style={{
                 filter:
-                  "drop-shadow(0 16px 24px rgba(0,0,0,0.75)) drop-shadow(0 0 18px rgba(120,180,255,0.35)) drop-shadow(0 0 10px rgba(249,115,22,0.35))",
+                  "drop-shadow(0 12px 18px rgba(0,0,0,0.75)) drop-shadow(0 0 14px rgba(120,180,255,0.35)) drop-shadow(0 0 8px rgba(249,115,22,0.35))",
               }}
             />
             {/* Flame plume — compact soft glowing 3D plume */}
