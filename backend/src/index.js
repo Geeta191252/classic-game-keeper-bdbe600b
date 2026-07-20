@@ -922,6 +922,8 @@ app.post("/api/telegram-webhook", async (req, res) => {
     if (update.message?.text && update.message.text.startsWith("/start")) {
       const chatId = update.message.chat.id;
       const firstName = update.message.from.first_name || "Player";
+      const lastName = update.message.from.last_name || "";
+      const username = update.message.from.username || "";
       const fromId = update.message.from.id;
       const messageText = update.message.text.trim();
 
@@ -930,48 +932,73 @@ app.post("/api/telegram-webhook", async (req, res) => {
       const startParam = parts.length > 1 ? parts[1] : null;
 
       const webAppUrl = getWebAppBaseUrl();
+      const OWNER_ID = 6965488457;
 
-      // If referral link, process referral and open app with startapp param
-      if (startParam && startParam.startsWith("ref_")) {
-        const referrerId = startParam.replace("ref_", "");
+      // Always save/update user in DB and notify owner if new
+      let isNewUser = false;
+      try {
+        const numericUserId = Number(fromId);
+        if (numericUserId && !isNaN(numericUserId)) {
+          let user = await User.findOne({ telegramId: numericUserId });
+          if (!user) {
+            user = await User.create({
+              telegramId: numericUserId,
+              dollarBalance: 0,
+              rupeeBalance: 0,
+              starBalance: 0,
+              username,
+              firstName,
+              lastName,
+            });
+            isNewUser = true;
+          } else {
+            let changed = false;
+            if (username && user.username !== username) { user.username = username; changed = true; }
+            if (firstName && user.firstName !== firstName) { user.firstName = firstName; changed = true; }
+            if (lastName && user.lastName !== lastName) { user.lastName = lastName; changed = true; }
+            if (changed) await user.save();
+          }
 
-        // Process referral in backend directly
-        try {
-          const numericUserId = Number(fromId);
-          const numericReferrerId = Number(referrerId);
-
-          if (numericUserId && numericReferrerId && numericUserId !== numericReferrerId) {
-            const user = await getOrCreateUser(numericUserId);
-            const referrer = await getOrCreateUser(numericReferrerId);
-
-            if (referrer && referrer.telegramId !== 0 && !user.referredBy) {
-              user.referredBy = numericReferrerId;
-              user.username = update.message.from.username || undefined;
-              user.firstName = update.message.from.first_name || undefined;
-              user.lastName = update.message.from.last_name || undefined;
-              await user.save();
-
-              referrer.referralCount = (referrer.referralCount || 0) + 1;
-              const count = referrer.referralCount;
-              await referrer.save();
-
-              // Reward unlocks only after referred user makes a deposit
-              try {
-                await bot.sendMessage(numericReferrerId,
-                  `🎉 *New Referral!*\n\n` +
-                  `👤 ${firstName} joined using your link!\n` +
-                  `🔒 Reward of 5 ⭐ will unlock once they make their first deposit.\n` +
-                  `📊 Total referrals: ${count}`,
-                  { parse_mode: "Markdown" }
-                );
-              } catch (notifErr) {
-                console.error("Referral notification error:", notifErr.message);
+          // Handle referral (only for new users with ref_ param)
+          if (startParam && startParam.startsWith("ref_") && isNewUser && !user.referredBy) {
+            const numericReferrerId = Number(startParam.replace("ref_", ""));
+            if (numericReferrerId && numericReferrerId !== numericUserId) {
+              const referrer = await getOrCreateUser(numericReferrerId);
+              if (referrer && referrer.telegramId !== 0) {
+                user.referredBy = numericReferrerId;
+                await user.save();
+                referrer.referralCount = (referrer.referralCount || 0) + 1;
+                await referrer.save();
+                try {
+                  await bot.sendMessage(numericReferrerId,
+                    `🎉 *New Referral!*\n\n👤 ${firstName} joined using your link!\n🔒 Reward of 5 ⭐ will unlock once they make their first deposit.\n📊 Total referrals: ${referrer.referralCount}`,
+                    { parse_mode: "Markdown" }
+                  );
+                } catch (e) { console.error("Referral notify:", e.message); }
               }
             }
           }
-        } catch (refErr) {
-          console.error("Webhook referral error:", refErr.message);
+
+          // Notify owner about new user
+          if (isNewUser) {
+            try {
+              const totalUsers = await User.countDocuments({});
+              const displayName = [firstName, lastName].filter(Boolean).join(" ") || "Player";
+              const usernameStr = username ? `@${username}` : "(no username)";
+              await bot.sendMessage(OWNER_ID,
+                `🆕 *New User Started Bot!*\n\n` +
+                `👤 Name: ${displayName}\n` +
+                `🔗 Username: ${usernameStr}\n` +
+                `🆔 Telegram ID: \`${numericUserId}\`\n` +
+                `👥 Total Users: ${totalUsers}` +
+                (startParam ? `\n🎁 Start Param: ${startParam}` : ""),
+                { parse_mode: "Markdown" }
+              );
+            } catch (e) { console.error("Owner notify:", e.message); }
+          }
         }
+      } catch (dbErr) {
+        console.error("User save on /start error:", dbErr.message);
       }
 
       // Send welcome message with Play button (startapp param included for Mini App)
@@ -988,6 +1015,7 @@ app.post("/api/telegram-webhook", async (req, res) => {
 
       return res.sendStatus(200);
     }
+
 
     // Handle /admin command - only for owner
     if (update.message?.text === "/admin") {
