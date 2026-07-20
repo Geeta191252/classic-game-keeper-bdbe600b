@@ -39,6 +39,7 @@ const AdminPages = {
   Users: lazy(() => import("./pages/admin/pages").then(m => ({ default: m.UsersPage }))),
   Games: lazy(() => import("./pages/admin/pages").then(m => ({ default: m.GamesPage }))),
   AviatorFun: lazy(() => import("./pages/admin/pages").then(m => ({ default: m.AviatorFunControlPage }))),
+  JetX: lazy(() => import("./pages/admin/pages").then(m => ({ default: m.JetXControlPage }))),
   Deposits: lazy(() => import("./pages/admin/pages").then(m => ({ default: m.DepositsPage }))),
   Withdrawals: lazy(() => import("./pages/admin/pages").then(m => ({ default: m.WithdrawalsPage }))),
   WalletAdjust: lazy(() => import("./pages/admin/pages").then(m => ({ default: m.WalletAdjustPage }))),
