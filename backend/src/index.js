@@ -42,14 +42,29 @@ function getWebAppUrl(suffix = "") {
   return `${getWebAppBaseUrl()}${suffix}`;
 }
 
+// Extra promotional buttons (configured via Koyeb env)
+// EXTRA_BTN_1_TEXT / EXTRA_BTN_1_URL ... up to _3_
+function getExtraButtonRows() {
+  const rows = [];
+  for (let i = 1; i <= 3; i++) {
+    const text = process.env[`EXTRA_BTN_${i}_TEXT`];
+    const url = process.env[`EXTRA_BTN_${i}_URL`];
+    if (text && url && /^https:\/\//i.test(url)) {
+      rows.push([{ text, url }]);
+    }
+  }
+  return rows;
+}
+
 async function sendWebAppMessage(chatId, text, buttonText, url, options = {}) {
   const safeUrl = normalizeHttpsUrl(url, getWebAppBaseUrl());
+  const extras = getExtraButtonRows();
   try {
     return await bot.sendMessage(chatId, text, {
       ...options,
       disable_web_page_preview: true,
       reply_markup: {
-        inline_keyboard: [[{ text: buttonText, web_app: { url: safeUrl } }]],
+        inline_keyboard: [[{ text: buttonText, web_app: { url: safeUrl } }], ...extras],
       },
     });
   } catch (error) {
@@ -59,7 +74,7 @@ async function sendWebAppMessage(chatId, text, buttonText, url, options = {}) {
         ...options,
         disable_web_page_preview: true,
         reply_markup: {
-          inline_keyboard: [[{ text: buttonText, url: safeUrl }]],
+          inline_keyboard: [[{ text: buttonText, url: safeUrl }], ...extras],
         },
       });
     } catch (err2) {
@@ -67,6 +82,19 @@ async function sendWebAppMessage(chatId, text, buttonText, url, options = {}) {
       return bot.sendMessage(chatId, text, { ...options, disable_web_page_preview: true });
     }
   }
+}
+
+async function sendChannelWithButtons(chatId, text, playUrl, options = {}) {
+  const safePlay = normalizeHttpsUrl(playUrl, getWebAppBaseUrl());
+  const extras = getExtraButtonRows();
+  return bot.sendMessage(chatId, text, {
+    parse_mode: "Markdown",
+    disable_web_page_preview: true,
+    ...options,
+    reply_markup: {
+      inline_keyboard: [[{ text: "🎮 PLAY GAME 🕹️", url: safePlay }], ...extras],
+    },
+  });
 }
 
 // Middleware
@@ -403,7 +431,7 @@ app.post("/api/withdraw", async (req, res) => {
 // ============================================
 app.post("/api/admin/approve-withdrawal", async (req, res) => {
   try {
-    const { ownerId, transactionId } = req.body;
+    const { ownerId, transactionId, txId, usdValue } = req.body;
     if (String(ownerId) !== "6965488457") {
       return res.status(403).json({ error: "Unauthorized" });
     }
@@ -414,34 +442,41 @@ app.post("/api/admin/approve-withdrawal", async (req, res) => {
     }
 
     tx.status = "completed";
+    if (txId) tx.txHash = String(txId);
     await tx.save();
 
     // Send Telegram notification to user
     try {
       const amount = Math.abs(tx.amount);
-      const symbol = tx.currency === "dollar" ? "$" : "⭐";
-      await bot.sendMessage(tx.telegramId, 
+      const symbol = tx.currency === "dollar" ? "$" : tx.currency === "rupee" ? "₹" : "⭐";
+      await bot.sendMessage(tx.telegramId,
         `✅ *Withdrawal Approved!*\n\n` +
         `💰 Amount: ${symbol}${amount}\n` +
         `📍 Address: \`${tx.cryptoAddress}\`\n` +
-        `🔗 Network: ${tx.withdrawalNetwork || "N/A"}\n\n` +
-        `Your funds will be sent shortly!`,
+        `🔗 Network: ${tx.withdrawalNetwork || "N/A"}\n` +
+        (txId ? `🔗 TxID: \`${txId}\`\n` : "") +
+        `\nYour funds have been sent!`,
         { parse_mode: "Markdown" }
       );
     } catch (botErr) {
       console.error("Failed to send approval notification:", botErr.message);
     }
 
+    // Channel post styled like reference (Amount / USD Value / TxID + PLAY GAME + extras)
     try {
       const amount = Math.abs(tx.amount);
-      const symbol = tx.currency === "dollar" ? "$" : tx.currency === "rupee" ? "₹" : "⭐";
-      await bot.sendMessage(WITHDRAWAL_CHANNEL,
-        `✅ *Withdrawal Paid*\n\n` +
-        `💰 Amount: ${symbol}${amount}\n` +
-        `🔗 Network: ${tx.withdrawalNetwork || "N/A"}\n` +
-        `📍 Address: \`${tx.cryptoAddress}\``,
-        { parse_mode: "Markdown", disable_web_page_preview: true }
-      );
+      const network = tx.withdrawalNetwork || (tx.currency === "dollar" ? "USD" : tx.currency === "rupee" ? "INR" : "STAR");
+      const shortTx = txId ? `${String(txId).slice(0, 6)}...${String(txId).slice(-5)}` : "";
+      const usdLine = usdValue !== undefined && usdValue !== null && usdValue !== ""
+        ? `💵 USD Value: $${Number(usdValue).toFixed(4)}\n\n`
+        : "";
+      const txLine = txId ? `🔗 TxID: [${shortTx}](https://t.me/${String(WITHDRAWAL_CHANNEL).replace("@", "")})` : "";
+      const text =
+        `✅ *${network} Withdrawal Successful!*\n\n` +
+        `🚀 Amount: ${amount} ${network}\n\n` +
+        usdLine +
+        txLine;
+      await sendChannelWithButtons(WITHDRAWAL_CHANNEL, text, getWebAppUrl());
     } catch (channelErr) {
       console.error("Failed to post withdrawal approval to channel:", channelErr?.response?.body?.description || channelErr.message);
     }

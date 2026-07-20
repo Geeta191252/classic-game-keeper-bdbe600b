@@ -619,6 +619,12 @@ const AdminPanel = () => {
     setProcessingWithdrawal(txId);
     try {
       const endpoint = action === "approve" ? "approve-withdrawal" : "reject-withdrawal";
+      let extra: { txId?: string; usdValue?: string } = {};
+      if (action === "approve") {
+        const providerTxId = window.prompt("Blockchain TxID (optional — will be posted to the withdrawal channel):", "") || "";
+        const usd = window.prompt("USD value (optional, e.g. 0.0152):", "") || "";
+        extra = { txId: providerTxId.trim(), usdValue: usd.trim() };
+      }
       const res = await fetch(`${API_BASE_URL}/admin/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -626,6 +632,7 @@ const AdminPanel = () => {
           ownerId: String(OWNER_ID),
           transactionId: txId,
           reason: action === "reject" ? "Admin rejected" : undefined,
+          ...extra,
         }),
       });
       const data = await res.json();
