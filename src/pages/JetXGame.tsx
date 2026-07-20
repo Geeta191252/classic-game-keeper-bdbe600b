@@ -145,8 +145,8 @@ const JetXGame = () => {
   useEffect(() => { multMv.set(multiplier); }, [multiplier, multMv]);
 
   // ── Smooth rocket vertical position driven by spring (no per-poll jumps)
-  const bottomMv = useMotionValue(8);
-  const bottomSpring = useSpring(bottomMv, { stiffness: 380, damping: 14, mass: 0.28 });
+  const bottomMv = useMotionValue(6);
+  const bottomSpring = useSpring(bottomMv, { stiffness: 520, damping: 16, mass: 0.22 });
   const bottomStyle = useTransform(bottomSpring, (v) => `${v}%`);
 
   // ── Cloud parallax scroll (two layers, continuous, varied)
