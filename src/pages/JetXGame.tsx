@@ -328,14 +328,25 @@ const JetXGame = () => {
     { mode: "STAR", label: "★" },
   ];
 
-  // Rocket flight math — cap around centre of the screen so it never flies off
-  // Lower log base so the rocket reaches centre faster (feels 2x quicker at 1x-2x)
+  // Rocket flight math — keep rocket strictly BELOW the "FLYING HIGH" badge.
+  // Cap max bottom at ~28% so it never overlaps the badge/multiplier area.
   const progress = phase === "flying" ? Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(3)) : 0;
-  const rocketBottomPct = phase === "crashed" ? 120 : 6 + progress * 48;
+  const rocketBottomPct = phase === "crashed" ? 120 : 6 + progress * 22;
   const flameHvh = phase === "flying" ? 6 + progress * 6 : phase === "betting" ? 3.5 : 2;
 
-  // Drive smooth rocket bottom + thrust intensity when values change
-  useEffect(() => { bottomMv.set(rocketBottomPct); }, [rocketBottomPct, bottomMv]);
+  // Drive smooth rocket bottom. On first mount while already flying, snap
+  // (no spring-up from 6%) so returning users see the rocket exactly where
+  // the server says it is right now.
+  const didInitRocketRef = useRef(false);
+  useEffect(() => {
+    if (!didInitRocketRef.current && phase === "flying") {
+      bottomMv.jump(rocketBottomPct);
+      didInitRocketRef.current = true;
+    } else {
+      bottomMv.set(rocketBottomPct);
+      if (phase === "flying") didInitRocketRef.current = true;
+    }
+  }, [rocketBottomPct, bottomMv, phase]);
   useEffect(() => { if (phase === "flying") setThrustIntensity(multiplier); }, [multiplier, phase, setThrustIntensity]);
 
   // Phase-based sound lifecycle
