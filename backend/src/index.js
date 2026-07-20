@@ -47,13 +47,25 @@ async function sendWebAppMessage(chatId, text, buttonText, url, options = {}) {
   try {
     return await bot.sendMessage(chatId, text, {
       ...options,
+      disable_web_page_preview: true,
       reply_markup: {
         inline_keyboard: [[{ text: buttonText, web_app: { url: safeUrl } }]],
       },
     });
   } catch (error) {
     console.error("Telegram web_app button error:", error?.response?.body?.description || error.message);
-    return bot.sendMessage(chatId, `${text}\n\nOpen game: ${safeUrl}`, options);
+    try {
+      return await bot.sendMessage(chatId, text, {
+        ...options,
+        disable_web_page_preview: true,
+        reply_markup: {
+          inline_keyboard: [[{ text: buttonText, url: safeUrl }]],
+        },
+      });
+    } catch (err2) {
+      console.error("Telegram url button fallback error:", err2?.response?.body?.description || err2.message);
+      return bot.sendMessage(chatId, text, { ...options, disable_web_page_preview: true });
+    }
   }
 }
 
