@@ -53,6 +53,11 @@ function getExtraButtonRows() {
       rows.push([{ text, url }]);
     }
   }
+  const supportUrl = process.env.SUPPORT_URL;
+  const supportText = process.env.SUPPORT_TEXT || "🆘 Support";
+  if (supportUrl && /^https:\/\//i.test(supportUrl)) {
+    rows.push([{ text: supportText, url: supportUrl }]);
+  }
   return rows;
 }
 
