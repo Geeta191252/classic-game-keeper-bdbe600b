@@ -352,7 +352,7 @@ app.post("/api/withdraw", async (req, res) => {
     const user = await getOrCreateUser(userId);
 
     // Withdraw only from winning
-    const winningField = currency === "dollar" ? "dollarWinning" : "starWinning";
+    const winningField = currency === "dollar" ? "dollarWinning" : currency === "rupee" ? "rupeeWinning" : "starWinning";
     if ((user[winningField] || 0) < amount) {
       return res.status(400).json({ error: "Insufficient winning balance. Withdrawals are only allowed from winnings." });
     }
@@ -360,6 +360,9 @@ app.post("/api/withdraw", async (req, res) => {
     // Hold the amount (deduct from winning immediately to prevent double-spend)
     user[winningField] -= amount;
     await user.save();
+
+    const currencyLabel = currency === "dollar" ? "USDT" : currency === "rupee" ? "INR" : "STAR";
+    const displaySymbol = currency === "dollar" ? "$" : currency === "rupee" ? "₹" : "⭐";
 
     // Create PENDING transaction
     await Transaction.create({
@@ -369,8 +372,8 @@ app.post("/api/withdraw", async (req, res) => {
       amount: -amount,
       status: "pending",
       cryptoAddress,
-      withdrawalNetwork: network || "",
-      description: `Withdrawal of ${currency === "dollar" ? "$" + amount : amount + " Stars"} to ${cryptoAddress}`,
+      withdrawalNetwork: network || currencyLabel,
+      description: `Withdrawal of ${displaySymbol}${amount} ${currencyLabel} to ${cryptoAddress}`,
     });
 
     // Notifications: admin DM + withdrawal channel + user confirmation
