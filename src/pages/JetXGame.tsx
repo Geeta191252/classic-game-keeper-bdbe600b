@@ -560,7 +560,7 @@ const JetXGame = () => {
               {phase === "flying" && (
                 <motion.div key="f" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                   <motion.div
-                    className="text-[74px] font-black leading-none italic"
+                    className="text-[52px] font-black leading-none italic"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#ffffff,#fde047,#eab308)",
