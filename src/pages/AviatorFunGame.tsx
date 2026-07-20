@@ -21,21 +21,42 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import "./AviatorFunGame.css";
 
-// Synthesizer Audio Engine using Web Audio API
+// Audio engine — uses the same MP3 sounds as the real Aviator game
 class AviatorAudioEngine {
   private ctx: AudioContext | null = null;
   public isMuted: boolean = true; // Start muted by default (user toggles it in header)
-  
-  private engineOsc: OscillatorNode | null = null;
-  private engineOsc2: OscillatorNode | null = null;
-  private engineGain: GainNode | null = null;
+
+  private startAudio: HTMLAudioElement | null = null;
+  private crashAudio: HTMLAudioElement | null = null;
+  private cashoutAudio: HTMLAudioElement | null = null;
+  private loaded = false;
 
   init() {
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      try {
+        this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      } catch {}
     }
-    if (this.ctx.state === "suspended") {
+    if (this.ctx && this.ctx.state === "suspended") {
       this.ctx.resume();
+    }
+    if (!this.loaded) {
+      this.loaded = true;
+      try {
+        this.startAudio = new Audio("/sounds/aviator/game-start.mp3");
+        this.crashAudio = new Audio("/sounds/aviator/plane-crash.mp3");
+        this.cashoutAudio = new Audio("/sounds/aviator/cashout.mp3");
+        this.startAudio.loop = true;
+        this.startAudio.volume = 0.6;
+        this.crashAudio.volume = 0.8;
+        this.cashoutAudio.volume = 0.9;
+        [this.startAudio, this.crashAudio, this.cashoutAudio].forEach(a => {
+          a.preload = "auto";
+          a.load();
+        });
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -49,164 +70,64 @@ class AviatorAudioEngine {
   }
 
   playClick() {
-    if (this.isMuted || !this.ctx) return;
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(600, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.08);
-      
-      gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
-      
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      
-      osc.start();
-      osc.stop(this.ctx.currentTime + 0.08);
-    } catch (e) {
-      console.error(e);
-    }
+    // no-op (kept for API compatibility)
   }
 
   startEngine() {
-    if (this.isMuted || !this.ctx) return;
+    if (this.isMuted) return;
+    this.init();
+    if (!this.startAudio) return;
     try {
-      if (this.engineOsc) return; // Already running
-
-      this.engineOsc = this.ctx.createOscillator();
-      this.engineOsc2 = this.ctx.createOscillator();
-      this.engineGain = this.ctx.createGain();
-      
-      this.engineOsc.type = "sawtooth";
-      this.engineOsc.frequency.setValueAtTime(45, this.ctx.currentTime);
-      
-      this.engineOsc2.type = "triangle";
-      this.engineOsc2.frequency.setValueAtTime(90, this.ctx.currentTime);
-
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(180, this.ctx.currentTime);
-      
-      this.engineGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
-      this.engineGain.gain.linearRampToValueAtTime(0.08, this.ctx.currentTime + 0.5);
-      
-      this.engineOsc.connect(filter);
-      this.engineOsc2.connect(filter);
-      filter.connect(this.engineGain);
-      this.engineGain.connect(this.ctx.destination);
-      
-      this.engineOsc.start();
-      this.engineOsc2.start();
+      this.startAudio.currentTime = 0;
+      this.startAudio.playbackRate = 1.0;
+      this.startAudio.play().catch(() => undefined);
     } catch (e) {
       console.error(e);
     }
   }
 
   updateEnginePitch(multiplier: number) {
-    if (this.isMuted || !this.engineOsc || !this.ctx || !this.engineGain) return;
+    if (this.isMuted || !this.startAudio) return;
     try {
-      const baseFreq = 45 + Math.min(multiplier * 5, 120); 
-      this.engineOsc.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.1);
-      this.engineOsc2.frequency.setTargetAtTime(baseFreq * 2, this.ctx.currentTime, 0.1);
-      
-      const targetGain = 0.08 + Math.min(multiplier * 0.003, 0.07);
-      this.engineGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.2);
-    } catch (e) {}
+      // Speed up loop slightly as multiplier grows (1.0x → ~1.6x)
+      const rate = Math.min(1.6, 1.0 + Math.max(0, multiplier - 1) * 0.05);
+      this.startAudio.playbackRate = rate;
+    } catch {}
   }
 
   stopEngine() {
-    if (!this.engineOsc || !this.ctx || !this.engineGain) return;
+    if (!this.startAudio) return;
     try {
-      const tempGain = this.engineGain;
-      const tempOsc = this.engineOsc;
-      const tempOsc2 = this.engineOsc2;
-      
-      this.engineOsc = null;
-      this.engineOsc2 = null;
-      this.engineGain = null;
-      
-      tempGain.gain.setValueAtTime(tempGain.gain.value, this.ctx.currentTime);
-      tempGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
-      
-      setTimeout(() => {
-        try {
-          tempOsc.stop();
-          tempOsc2.stop();
-          tempOsc.disconnect();
-          tempOsc2.disconnect();
-          tempGain.disconnect();
-        } catch(e) {}
-      }, 300);
-    } catch (e) {
-      console.error(e);
-    }
+      this.startAudio.pause();
+      this.startAudio.currentTime = 0;
+    } catch {}
   }
 
   playCashout() {
-    if (this.isMuted || !this.ctx) return;
+    if (this.isMuted) return;
+    this.init();
+    if (!this.cashoutAudio) return;
     try {
-      const now = this.ctx.currentTime;
-      const playChime = (freq: number, delay: number) => {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now + delay);
-        
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.setValueAtTime(0.001, now + delay);
-        gain.gain.linearRampToValueAtTime(0.12, now + delay + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.6);
-        
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        
-        osc.start(now + delay);
-        osc.stop(now + delay + 0.6);
-      };
-      
-      playChime(784.00, 0);      
-      playChime(1046.50, 0.06);   
-      playChime(1318.51, 0.12);   
+      this.cashoutAudio.currentTime = 0;
+      this.cashoutAudio.play().catch(() => undefined);
     } catch (e) {
       console.error(e);
     }
   }
 
   playCrash() {
-    if (this.isMuted || !this.ctx) return;
+    if (this.isMuted) return;
+    this.init();
+    if (!this.crashAudio) return;
     try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      const filter = this.ctx.createBiquadFilter();
-      
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(120, now);
-      osc.frequency.exponentialRampToValueAtTime(30, now + 0.6);
-      
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(300, now);
-      filter.frequency.exponentialRampToValueAtTime(80, now + 0.6);
-      
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-      
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.ctx.destination);
-      
-      osc.start(now);
-      osc.stop(now + 0.65);
+      this.crashAudio.currentTime = 0;
+      this.crashAudio.play().catch(() => undefined);
     } catch (e) {
       console.error(e);
     }
   }
 }
+
 
 type Phase = "WAITING" | "FLYING" | "CRASHED";
 type BetStatus = "NONE" | "PLACED" | "ACTIVE" | "CASHED_OUT" | "LOST";
