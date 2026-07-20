@@ -785,37 +785,39 @@ const AviatorFunGame = () => {
       };
     });
 
+    // Build local "You" bets from panel state as a fallback / for instant pin-to-top
+    const localMine: any[] = [];
+    if (panel1.status !== "NONE") {
+      localMine.push({
+        name: "You (Bet 1)",
+        isUser: true,
+        betAmount: panel1.amount,
+        cashedOut: panel1.status === "CASHED_OUT",
+        winAmount: panel1.winAmount || 0,
+        targetMultiplier: panel1.autoCashout ? panel1.autoMultiplier : 0,
+      });
+    }
+    if (panel2.status !== "NONE") {
+      localMine.push({
+        name: "You (Bet 2)",
+        isUser: true,
+        betAmount: panel2.amount,
+        cashedOut: panel2.status === "CASHED_OUT",
+        winAmount: panel2.winAmount || 0,
+        targetMultiplier: panel2.autoCashout ? panel2.autoMultiplier : 0,
+      });
+    }
+
     let displayList: any[] = [];
     if (activeSidebarTab === "all-bets") {
-      // Own bets on top, then rest
-      const mine = mapped.filter(p => p.isUser);
+      // Own bets pinned on top (prefer server data, fallback to local panel state)
+      const serverMine = mapped.filter(p => p.isUser);
+      const mine = serverMine.length > 0 ? serverMine : localMine;
       const others = mapped.filter(p => !p.isUser);
       displayList = [...mine, ...others];
     } else if (activeSidebarTab === "my-bets") {
-      displayList = mapped.filter(p => p.isUser);
-      // Fallback: if server hasn't caught up yet, show local panel state
-      if (displayList.length === 0) {
-        if (panel1.status !== "NONE") {
-          displayList.push({
-            name: "You (Bet 1)",
-            isUser: true,
-            betAmount: panel1.amount,
-            cashedOut: panel1.status === "CASHED_OUT",
-            winAmount: panel1.winAmount || 0,
-            targetMultiplier: panel1.autoCashout ? panel1.autoMultiplier : 0,
-          });
-        }
-        if (panel2.status !== "NONE") {
-          displayList.push({
-            name: "You (Bet 2)",
-            isUser: true,
-            betAmount: panel2.amount,
-            cashedOut: panel2.status === "CASHED_OUT",
-            winAmount: panel2.winAmount || 0,
-            targetMultiplier: panel2.autoCashout ? panel2.autoMultiplier : 0,
-          });
-        }
-      }
+      const serverMine = mapped.filter(p => p.isUser);
+      displayList = serverMine.length > 0 ? serverMine : localMine;
     } else if (activeSidebarTab === "top-bets") {
       displayList = [...mapped].filter(p => p.cashedOut).sort((a, b) => b.winAmount - a.winAmount).slice(0, 20);
     }
