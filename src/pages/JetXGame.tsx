@@ -145,8 +145,8 @@ const JetXGame = () => {
   useEffect(() => { multMv.set(multiplier); }, [multiplier, multMv]);
 
   // ── Smooth rocket vertical position driven by spring (no per-poll jumps)
-  const bottomMv = useMotionValue(8);
-  const bottomSpring = useSpring(bottomMv, { stiffness: 380, damping: 14, mass: 0.28 });
+  const bottomMv = useMotionValue(6);
+  const bottomSpring = useSpring(bottomMv, { stiffness: 520, damping: 16, mass: 0.22 });
   const bottomStyle = useTransform(bottomSpring, (v) => `${v}%`);
 
   // ── Cloud parallax scroll (two layers, continuous, varied)
@@ -397,7 +397,7 @@ const JetXGame = () => {
 
           <div className="flex-1 flex justify-center">
             <h1
-              className="text-[40px] font-black italic tracking-tight leading-none"
+              className="text-[30px] font-black italic tracking-tight leading-none"
               style={{
                 fontFamily: "'Arial Black', system-ui, sans-serif",
                 background: "linear-gradient(180deg,#ffffff 0%,#dbeafe 55%,#93a4c9 100%)",
@@ -475,8 +475,8 @@ const JetXGame = () => {
       {/* ── STAGE (edge-to-edge) ── */}
       <div className="relative z-10 mt-2">
         <div
-          className="relative overflow-hidden mx-3 rounded-[28px] jetx-glass-strong"
-          style={{ aspectRatio: "9 / 11" }}
+          className="relative overflow-hidden mx-3 rounded-[22px] jetx-glass-strong"
+          style={{ aspectRatio: "9 / 8" }}
         >
           {/* Solid blue night sky base */}
           <div
@@ -544,7 +544,7 @@ const JetXGame = () => {
                 <motion.div key="b" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                   <div className="text-[10px] text-white/60 uppercase tracking-[0.28em] mb-1 font-black">Next round in</div>
                   <div
-                    className="text-[84px] font-black leading-none italic"
+                    className="text-[56px] font-black leading-none italic"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#fde047,#eab308,#7c4a05)",
@@ -560,7 +560,7 @@ const JetXGame = () => {
               {phase === "flying" && (
                 <motion.div key="f" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                   <motion.div
-                    className="text-[74px] font-black leading-none italic"
+                    className="text-[52px] font-black leading-none italic"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#ffffff,#fde047,#eab308)",
@@ -586,7 +586,7 @@ const JetXGame = () => {
                 <motion.div key="c" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                   <div className="text-[10px] text-red-300 font-black uppercase tracking-[0.28em] mb-1">💥 Crashed</div>
                   <div
-                    className="text-[74px] font-black italic leading-none"
+                    className="text-[52px] font-black italic leading-none"
                     style={{
                       fontFamily: "'Arial Black', sans-serif",
                       background: "linear-gradient(180deg,#fecaca,#ef4444,#7f1d1d)",
@@ -605,9 +605,9 @@ const JetXGame = () => {
           {/* Rocket + flame */}
           <motion.div
             className="absolute pointer-events-none left-1/2"
-            style={{ width: "34%", x: "-50%", bottom: bottomStyle }}
+            style={{ width: "26%", x: "-50%", bottom: bottomStyle }}
             animate={{
-              y: phase === "betting" ? [0, -8, 0, 6, 0] : phase === "flying" ? [0, -3, 0, 3, 0] : 0,
+              y: phase === "betting" ? [0, -6, 0, 4, 0] : phase === "flying" ? [0, -2, 0, 2, 0] : 0,
             }}
             transition={{
               y: { duration: phase === "flying" ? 0.6 : 2.4, repeat: Infinity, ease: "easeInOut" },
@@ -616,10 +616,14 @@ const JetXGame = () => {
             <img
               src={rocketImg}
               alt="rocket"
+              loading="eager"
+              decoding="async"
+              // @ts-expect-error non-standard but supported
+              fetchpriority="high"
               className="w-full block relative"
               style={{
                 filter:
-                  "drop-shadow(0 16px 24px rgba(0,0,0,0.75)) drop-shadow(0 0 18px rgba(120,180,255,0.35)) drop-shadow(0 0 10px rgba(249,115,22,0.35))",
+                  "drop-shadow(0 12px 18px rgba(0,0,0,0.75)) drop-shadow(0 0 14px rgba(120,180,255,0.35)) drop-shadow(0 0 8px rgba(249,115,22,0.35))",
               }}
             />
             {/* Flame plume — compact soft glowing 3D plume */}
