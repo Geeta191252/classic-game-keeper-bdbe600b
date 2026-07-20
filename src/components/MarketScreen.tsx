@@ -126,17 +126,13 @@ const MarketScreen = ({ onGoToWallet }: MarketScreenProps) => {
     <div className="relative z-10 px-4 pt-4 pb-24 space-y-4 bg-[#0e131f] text-[#8e97a4] min-h-screen">
       
       {/* Page Title Card */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl p-4 flex items-center gap-3 bg-[#141b2b] border border-white/[0.02] shadow-md"
-      >
+      <div className="rounded-2xl p-4 flex items-center gap-3 bg-[#141b2b] border border-white/[0.02] shadow-md">
         <span className="text-2xl">🏪</span>
         <div>
           <h2 className="font-extrabold text-sm text-white">Market Shop</h2>
           <p className="text-[10px] text-[#8e97a4] mt-0.5">Purchase star packages and cash balance bundles</p>
         </div>
-      </motion.div>
+      </div>
 
       {loading ? (
         <p className="text-center text-xs py-8 text-slate-400">Loading offers…</p>
@@ -147,19 +143,14 @@ const MarketScreen = ({ onGoToWallet }: MarketScreenProps) => {
           <p className="text-[10px] text-[#8e97a4] mt-0.5">Check back soon for special deals!</p>
         </div>
       ) : (
-        offers.map((offer, idx) => (
-          <motion.div
-            key={offer._id}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-          >
+        offers.map((offer) => (
+          <div key={offer._id}>
             <OfferCard3D
               offer={offer}
               onClaim={() => claim(offer)}
               busy={busyId === offer._id}
             />
-          </motion.div>
+          </div>
         ))
       )}
 

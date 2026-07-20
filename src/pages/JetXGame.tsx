@@ -13,7 +13,7 @@ import {
   type JetXState,
 } from "@/lib/telegram";
 import { GameCurrencyMode, modeToWallet, toNativeAmount, toDisplayAmount, currencySymbol } from "@/lib/gameCurrency";
-import rocketImg from "@/assets/jetx-rocket-v2.png";
+import rocketImg from "@/assets/jetx-rocket-fast.webp";
 // Cartoon cloud sky — procedural SVG tiles (two parallax layers, varied clouds)
 const CLOUDS_BACK = `data:image/svg+xml;utf8,${encodeURIComponent(`
 <svg xmlns='http://www.w3.org/2000/svg' width='400' height='800' viewBox='0 0 400 800'>
@@ -140,13 +140,13 @@ const JetXGame = () => {
 
   // ── Smoothed multiplier for snappy number animation (matches faster flight)
   const multMv = useMotionValue(1);
-  const multSpring = useSpring(multMv, { stiffness: 140, damping: 18, mass: 0.55 });
+  const multSpring = useSpring(multMv, { stiffness: 260, damping: 22, mass: 0.35 });
   const multText = useTransform(multSpring, (v) => `${v.toFixed(2)}x`);
   useEffect(() => { multMv.set(multiplier); }, [multiplier, multMv]);
 
   // ── Smooth rocket vertical position driven by spring (no per-poll jumps)
   const bottomMv = useMotionValue(6);
-  const bottomSpring = useSpring(bottomMv, { stiffness: 520, damping: 16, mass: 0.22 });
+  const bottomSpring = useSpring(bottomMv, { stiffness: 760, damping: 20, mass: 0.16 });
   const bottomStyle = useTransform(bottomSpring, (v) => `${v}%`);
 
   // ── Cloud parallax scroll (two layers, continuous, varied)
@@ -274,7 +274,7 @@ const JetXGame = () => {
       } catch { /* silent */ }
     };
     tick();
-    const id = setInterval(tick, 250);
+    const id = setInterval(tick, 180);
     return () => { cancel = true; clearInterval(id); };
   }, [currency, refreshBalance]);
 
@@ -617,9 +617,8 @@ const JetXGame = () => {
               src={rocketImg}
               alt="rocket"
               loading="eager"
-              decoding="async"
-              // @ts-expect-error non-standard but supported
-              fetchpriority="high"
+              decoding="sync"
+              fetchPriority="high"
               className="w-full block relative"
               style={{
                 filter:

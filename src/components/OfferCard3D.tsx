@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import megaDealImg from "@/assets/offers/mega-deal-dollar.png";
-import specialOfferImg from "@/assets/offers/special-offer-star.png";
+import megaDealImg from "@/assets/offers/mega-deal-dollar-fast.webp";
+import specialOfferImg from "@/assets/offers/special-offer-star-fast.webp";
 
 export interface OfferCard3DData {
   _id: string;
@@ -35,6 +35,8 @@ const OfferCard3D = ({ offer, onClaim, busy }: Props) => {
       <img
         src={heroImg}
         alt={title}
+        loading="eager"
+        decoding="sync"
         className="w-full h-auto block"
         style={{ filter: "drop-shadow(0 14px 40px hsla(0,0%,0%,0.55))" }}
       />
