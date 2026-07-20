@@ -38,6 +38,7 @@ interface GameTileProps {
   category: string;
   badge?: string;
   badgeColor?: string;
+  fit?: "cover" | "contain";
   onClick?: () => void;
 }
 
