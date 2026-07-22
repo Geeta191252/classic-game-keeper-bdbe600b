@@ -229,8 +229,9 @@ const WalletScreen = () => {
     }
 
     const utrVal = upiUtr.trim();
-    if (utrVal.length < 10) {
-      toast({ title: "Invalid UTR", description: "Enter a valid 12-digit UTR/Transaction ID.", variant: "destructive" });
+    if (!/^\d{12}$/.test(utrVal)) {
+      toast({ title: "Invalid UTR", description: "Enter the real 12-digit UTR from your bank/UPI app.", variant: "destructive" });
+
       return;
     }
 
