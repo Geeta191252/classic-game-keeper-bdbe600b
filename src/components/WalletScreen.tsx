@@ -156,6 +156,8 @@ const WalletScreen = () => {
   const [upiAmount, setUpiAmount] = useState("");
   const [upiUtr, setUpiUtr] = useState("");
   const [upiSubmitting, setUpiSubmitting] = useState(false);
+  const [upiTimerStart, setUpiTimerStart] = useState<number | null>(null);
+  const [upiSecondsLeft, setUpiSecondsLeft] = useState(600);
 
   const { dollarBalance, rupeeBalance, starBalance, dollarWinning, rupeeWinning, starWinning, refreshBalance } = useBalanceContext();
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
