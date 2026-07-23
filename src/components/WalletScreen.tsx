@@ -223,6 +223,36 @@ const WalletScreen = () => {
     else setWithdrawStep("menu");
   }, [walletTab]);
 
+  // 10-minute UPI deposit countdown — auto-closes dialog when expired so admin
+  // panel + user history don't fill up with abandoned requests.
+  useEffect(() => {
+    if (!upiDepositDialog) {
+      setUpiTimerStart(null);
+      setUpiSecondsLeft(600);
+      return;
+    }
+    if (upiTimerStart === null) {
+      setUpiTimerStart(Date.now());
+      setUpiSecondsLeft(600);
+      return;
+    }
+    const id = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - upiTimerStart) / 1000);
+      const left = Math.max(0, 600 - elapsed);
+      setUpiSecondsLeft(left);
+      if (left <= 0) {
+        setUpiDepositDialog(false);
+        toast({
+          title: "Deposit window expired",
+          description: "10 minutes are up. Please start a new UPI deposit if you haven't paid yet.",
+          variant: "destructive",
+        });
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [upiDepositDialog, upiTimerStart]);
+
+
   const handleUpiDepositSubmit = async () => {
     const rupeeAmount = Number(upiAmount);
     if (!rupeeAmount || rupeeAmount < inrDepositMin) {
