@@ -1611,6 +1611,14 @@ const WalletScreen = () => {
                   </button>
                 </div>
 
+                {/* 10-minute countdown — request auto-cancels if not paid */}
+                <div className={`flex items-center justify-between rounded-xl px-3 py-2 border ${upiSecondsLeft <= 60 ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-amber-300">Time left to pay</span>
+                  <span className={`text-sm font-black font-mono ${upiSecondsLeft <= 60 ? 'text-red-300' : 'text-amber-200'}`}>
+                    {String(Math.floor(upiSecondsLeft / 60)).padStart(2, '0')}:{String(upiSecondsLeft % 60).padStart(2, '0')}
+                  </span>
+                </div>
+
                 <div className="space-y-1.5">
                   <p className="text-[9px] font-extrabold text-[#8e97a4] uppercase tracking-wider">INR Amount to Deposit</p>
                   <div className="relative">
